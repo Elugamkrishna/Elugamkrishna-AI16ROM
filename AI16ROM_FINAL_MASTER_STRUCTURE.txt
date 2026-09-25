@@ -1,0 +1,13 @@
+AI16ROM X6711 FINAL MASTER STRUCTURE
+AOSP Android 16 | android16-release | aosp_X6711 | userdebug
+MT6833 | ARM64 | Dynamic Partitions | A/B | AVB
+Stock V840 Kernel + DTB + DTBO + vendor_boot + vendor ramdisk
+Vendor files: 4011 | Vendor ramdisk modules: 205
+AI Core + Character AI + Voice AI + Vision + Search + Automation + Memory
+iPhone 14/16-inspired original AOSP UI: Dynamic Island-style, Lock Screen, Control Center, Focus, widgets, PiP, gestures
+AI Camera + AI Movie Studio + AI Gallery + AI AR
+AI Calling + Messaging + Privacy + Gaming + Battery + Connectivity + Developer Center
+A/B OTA + update_engine + dynamic partitions + AVB + rollback
+BOOT: BLACK + NEON ॐ + AI16 ROM + AI SYSTEM CORE + ENERGY RINGS
+RULE: hardware-supported features only; no fake camera capabilities; no proprietary Apple/XOS code/assets
+BUILD: external ARM64 Linux machine; 16GB+ RAM; 150GB+ free; Java 17

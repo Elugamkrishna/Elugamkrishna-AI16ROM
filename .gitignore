@@ -1,0 +1,57 @@
+# Android build output
+/out/
+/out_*/
+*.img
+*.img.xz
+*.img.gz
+
+# Logs
+*.log
+*.log.*
+*.tmp
+
+# Editor / OS files
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Gradle / local build cache
+.gradle/
+local.properties
+
+# Ninja / generated build artifacts
+.ninja_deps
+.ninja_log
+
+# Credentials / local secrets
+*.key
+*.pem
+*.p12
+*.keystore
+
+# Android Repo metadata
+/.repo/
+
+# Local build output
+/out/
+
+# Very large downloaded Android prebuilts
+/prebuilts/
+
+# Android Repo metadata
+/.repo/
+
+# Local build output
+/out/
+
+# Very large downloaded Android prebuilts
+/prebuilts/
+
+# Generated X6711 images
+/device/infinix/X6711/prebuilt/*.img
