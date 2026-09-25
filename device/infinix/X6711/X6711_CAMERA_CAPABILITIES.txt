@@ -1,0 +1,29 @@
+X6711 STOCK CAMERA BASELINE
+===========================
+
+SoC:
+MediaTek MT6833 / MT6833GP
+
+Stock camera stack:
+- MediaTek Camera HAL
+- Transsion Camera HAL
+- CamKit
+- camerahalserver
+- vendor.transsion.hardware.trancam.trancamserver@1.0-service
+
+Observed vendor components:
+- Camera Provider
+- ATMS
+- BGService
+- ISPHAL
+- CCAP
+- LomoEffect
+- Transsion Trancam
+
+Important:
+Camera filenames/mode libraries alone do not prove that every
+resolution, FPS, stabilization or Pro control is exposed by the
+X6711 Camera2 HAL.
+
+AI16ROM will expose camera features only after HAL capability
+validation on actual X6711 hardware.

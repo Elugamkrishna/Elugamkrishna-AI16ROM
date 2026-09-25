@@ -1,0 +1,21 @@
+AI16 CHARACTER SYSTEM
+
+Capabilities:
+- natural conversation
+- voice input
+- voice output
+- personality
+- conversation context
+- optional memory
+- facial/avatar animation
+- lip synchronization
+- expressions
+- gestures
+- AI actions
+
+Original characters:
+- Lallu Pattu
+- additional original AI16 characters
+
+Characters must be original creations.
+Character engine must respect Android privacy and permission boundaries.

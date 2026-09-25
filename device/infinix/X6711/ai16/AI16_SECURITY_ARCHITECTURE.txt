@@ -1,0 +1,30 @@
+AI16ROM SECURITY AI
+
+Security signals:
+- suspicious application activity
+- malware indicators
+- phishing indicators
+- spam/scam calls
+- suspicious messages
+- unexpected permission access
+- camera/microphone access
+- unknown application installation
+- USB/OTG security events
+- network anomalies
+- account security events
+
+Response:
+INFO     -> normal notification
+WARNING  -> warning notification
+HIGH     -> warning + optional voice alert
+CRITICAL -> danger notification + voice alert + user action prompt
+
+Rules:
+AI detection must not replace Android security enforcement.
+Android permission/security boundaries remain authoritative.
+AI confidence must not be represented as proof.
+User confirmation is required for destructive actions.
+
+Privacy:
+Prefer on-device processing.
+Do not expose private data to cloud processing without user permission.

@@ -1,0 +1,33 @@
+AI16ROM X6711 CAMERA RUNTIME
+
+Device:
+Infinix Note 30 5G
+Model: X6711
+Platform: MediaTek MT6833
+
+Camera architecture:
+Camera2 API
+MediaTek / Transsion vendor camera HAL
+CamKit / ISP vendor stack
+
+AI16 camera layer:
+AI16CameraService
+AI16CameraCapabilityProvider
+X6711CameraCapabilityProvider
+AI16CameraVisionBridge
+
+Rule:
+Only expose camera capabilities returned by the actual device Camera2/vendor stack.
+Unsupported modes must not be advertised.
+
+Planned AI layer:
+Face detection
+Subject tracking
+HDR processing
+Night processing
+Portrait/depth processing
+Animal recognition/swap
+AI photo enhancement
+AI video analysis
+
+Vendor HAL remains the hardware camera implementation.

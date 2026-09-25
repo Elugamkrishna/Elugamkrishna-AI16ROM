@@ -1,0 +1,7 @@
+LOCAL_PATH := vendor/infinix/X6711
+
+# X6711 STOCK V840 VENDOR
+# Keep odm / odm_dlkm / vendor_dlkm inside /vendor.
+
+PRODUCT_COPY_FILES += \
+    $(call find-copy-subdir-files,*,$(LOCAL_PATH)/proprietary,$(TARGET_COPY_OUT_VENDOR))

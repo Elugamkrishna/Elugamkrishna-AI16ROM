@@ -1,0 +1,18 @@
+AI16ROM BOOT AUDIO
+
+Target:
+Short original startup sound synchronized with Om animation.
+
+Requirements:
+- Original audio only
+- No copyrighted movie/music samples
+- Low duration
+- Low startup resource usage
+- Audio playback must use an Android-supported audio path
+- Must not block boot
+- Must stop cleanly
+- Must not replay after normal boot completion
+
+Implementation target:
+Framework/vendor audio integration during BootAnimation or an
+early-boot service, depending on final Android 16 build architecture.

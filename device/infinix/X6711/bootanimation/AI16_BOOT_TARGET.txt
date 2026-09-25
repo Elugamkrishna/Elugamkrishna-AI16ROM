@@ -1,0 +1,29 @@
+AI16ROM BOOT ANIMATION TARGET
+
+Background:
+Pure black / near-black
+
+Center:
+Luminous Om symbol: ॐ
+
+Animation:
+1. Black screen
+2. Small central Om appears
+3. Om gradually illuminates
+4. Circular energy rings expand
+5. Cyan / blue / purple / magenta glow develops
+6. Vertical light beam appears
+7. AI16 ROM text appears
+8. AI SYSTEM CORE text appears
+9. Progress indicator animates
+10. Transition to Android boot completion
+
+Visual style:
+Premium futuristic cinematic
+Minimal
+Dark neon
+Smooth motion
+No Android robot branding
+
+Hardware-safe:
+Animation must remain lightweight enough for X6711 boot-time rendering.

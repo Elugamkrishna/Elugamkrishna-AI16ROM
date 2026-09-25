@@ -1,0 +1,127 @@
+DEVICE_PATH := device/infinix/X6711
+
+TARGET_ARCH := arm64
+TARGET_ARCH_VARIANT := armv8-a
+TARGET_CPU_ABI := arm64-v8a
+TARGET_CPU_VARIANT_RUNTIME := cortex-a55
+
+TARGET_2ND_ARCH := arm
+TARGET_2ND_ARCH_VARIANT := armv7-a-neon
+TARGET_2ND_CPU_ABI := armeabi-v7a
+TARGET_2ND_CPU_VARIANT_RUNTIME := cortex-a55
+
+TARGET_BOOTLOADER_BOARD_NAME := X6711
+TARGET_BOARD_PLATFORM := mt6833
+TARGET_COPY_OUT_VENDOR := vendor
+TARGET_COPY_OUT_PRODUCT := product
+TARGET_COPY_OUT_SYSTEM_EXT := system_ext
+TARGET_COPY_OUT_SYSTEM_DLKM := system_dlkm
+TARGET_OTA_ASSERT_DEVICE := Infinix-X6711
+
+TARGET_SCREEN_DENSITY := 480
+
+BOARD_BOOT_HEADER_VERSION := 4
+BOARD_PAGE_SIZE := 4096
+BOARD_KERNEL_IMAGE_NAME := Image.gz
+
+BOARD_VENDOR_CMDLINE := bootopt=64S3,32N2,64N2
+
+
+BOARD_PREBUILT_DTBIMAGE_DIR := $(DEVICE_PATH)/prebuilt/dtb
+
+
+BOARD_SUPER_PARTITION_SIZE := 9126805504
+BOARD_SUPER_PARTITION_GROUPS := infinix_dynamic_partitions
+BOARD_INFINIX_DYNAMIC_PARTITIONS_PARTITION_LIST := system system_ext vendor product
+BOARD_INFINIX_DYNAMIC_PARTITIONS_SIZE := 9122611200
+
+BOARD_SYSTEMIMAGE_FILE_SYSTEM_TYPE := erofs
+BOARD_SYSTEM_EXTIMAGE_FILE_SYSTEM_TYPE := erofs
+BOARD_PRODUCTIMAGE_FILE_SYSTEM_TYPE := erofs
+BOARD_VENDORIMAGE_FILE_SYSTEM_TYPE := erofs
+BOARD_USERDATAIMAGE_FILE_SYSTEM_TYPE := f2fs
+BOARD_SYSTEM_DLKMIMAGE_FILE_SYSTEM_TYPE := ext4
+
+BOARD_AVB_ENABLE := true
+
+BOARD_USES_METADATA_PARTITION := true
+
+TARGET_NO_RECOVERY := true
+TARGET_NO_BOOTLOADER := true
+
+BOARD_BOOTIMAGE_PARTITION_SIZE := 67108864
+BOARD_VENDOR_BOOTIMAGE_PARTITION_SIZE := 67108864
+BOARD_FLASH_BLOCK_SIZE := 262144
+
+# X6711 prebuilt kernel
+TARGET_PREBUILT_KERNEL := $(DEVICE_PATH)/prebuilt/kernel/Image.gz
+BOARD_PREBUILT_DTBOIMAGE := $(DEVICE_PATH)/prebuilt/dtbo.img
+
+# Kernel modules supplied by the X6711 kernel package
+BOARD_VENDOR_KERNEL_MODULES := \
+    $(wildcard $(DEVICE_PATH)/prebuilt/modules/vendor/*.ko)
+
+BOARD_VENDOR_RAMDISK_KERNEL_MODULES := \
+    $(wildcard $(DEVICE_PATH)/prebuilt/modules/vendor_boot/*.ko)
+
+# ============================================================
+# X6711 Android 16 — Android Boot Image Header v4
+# Exact stock V840 layout verified from firmware
+# ============================================================
+
+
+# Stock V840 vendor_boot uses a 4 KiB page size.
+# Keep this separate from legacy boot-image offset overrides.
+BOARD_KERNEL_PAGESIZE := 4096
+
+# Stock V840 vendor_boot contains the DTB.
+# Android build logic places it in vendor_boot, not boot.img,
+# when vendor_boot is being built.
+BOARD_INCLUDE_DTB_IN_BOOTIMG := true
+
+# Exact stock vendor command line.
+
+# Exact stock partition size.
+
+# Exact stock prebuilt kernel.
+
+# Exact stock DTBO.
+
+# Stock vendor_boot has 205 vendor-ramdisk modules.
+    $(wildcard $(DEVICE_PATH)/vendor_ramdisk/lib/modules/*.ko)
+
+# Stock vendor-boot module load order.
+BOARD_VENDOR_RAMDISK_KERNEL_MODULES_LOAD := \
+    $(wildcard $(DEVICE_PATH)/vendor_ramdisk/lib/modules/*.ko)
+
+# Stock V840 uses a dedicated vendor_boot image.
+PRODUCT_BUILD_VENDOR_BOOT_IMAGE := true
+
+# ============================================================
+# X6711 FINAL VERIFIED BOOT CONFIG
+# ============================================================
+
+BOARD_BOOT_HEADER_VERSION := 4
+BOARD_PAGE_SIZE := 4096
+BOARD_KERNEL_PAGESIZE := 4096
+BOARD_KERNEL_IMAGE_NAME := Image.gz
+
+BOARD_INCLUDE_DTB_IN_BOOTIMG := true
+BOARD_PREBUILT_DTBIMAGE_DIR := $(DEVICE_PATH)/prebuilt/dtb
+
+BOARD_VENDOR_CMDLINE := bootopt=64S3,32N2,64N2
+
+BOARD_BOOTIMAGE_PARTITION_SIZE := 67108864
+BOARD_VENDOR_BOOTIMAGE_PARTITION_SIZE := 67108864
+BOARD_FLASH_BLOCK_SIZE := 262144
+
+TARGET_PREBUILT_KERNEL := $(DEVICE_PATH)/prebuilt/kernel/Image.gz
+BOARD_PREBUILT_DTBOIMAGE := $(DEVICE_PATH)/prebuilt/dtbo.img
+
+BOARD_VENDOR_RAMDISK_KERNEL_MODULES := \
+    $(wildcard $(DEVICE_PATH)/vendor_ramdisk/lib/modules/*.ko)
+
+BOARD_VENDOR_RAMDISK_KERNEL_MODULES_LOAD := \
+    $(wildcard $(DEVICE_PATH)/vendor_ramdisk/lib/modules/*.ko)
+
+PRODUCT_BUILD_VENDOR_BOOT_IMAGE := true

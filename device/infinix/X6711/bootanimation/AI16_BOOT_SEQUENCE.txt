@@ -1,0 +1,15 @@
+00.00 - Black
+00.20 - Small Om appears
+00.60 - Om illumination begins
+01.00 - Energy ring expands
+01.40 - Neon glow reaches full intensity
+01.80 - Vertical light beam
+02.20 - AI16 ROM appears
+02.60 - AI SYSTEM CORE appears
+03.00 - Progress animation
+03.50 - Final glow
+04.00 - Fade into Android system
+
+Audio:
+Original short cinematic electronic startup tone,
+synchronized with the Om illumination and final logo reveal.

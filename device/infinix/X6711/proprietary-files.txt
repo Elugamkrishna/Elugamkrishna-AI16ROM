@@ -1,0 +1,3 @@
+# X6711 V840 proprietary files
+# Source: stock X6711-H333EHI-U-GL-250418V840 vendor_a.img
+# Camera HAL/services and dependencies will be populated from the extracted vendor tree.

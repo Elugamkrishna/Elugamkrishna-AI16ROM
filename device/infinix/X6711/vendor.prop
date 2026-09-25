@@ -1,0 +1,9 @@
+# X6711 V840 vendor baseline
+ro.board.platform=mt6833
+ro.product.device=Infinix-X6711
+ro.product.name=X6711-GL
+ro.product.model=Infinix X6711
+ro.product.brand=Infinix
+ro.product.manufacturer=Infinix
+ro.hardware=mt6833
+ro.vendor.camkit_enabled=1

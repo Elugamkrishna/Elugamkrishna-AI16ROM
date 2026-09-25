@@ -1,0 +1,21 @@
+LOCAL_PATH := device/infinix/X6711
+
+PRODUCT_SOONG_NAMESPACES += $(LOCAL_PATH)
+
+PRODUCT_ENFORCE_RRO_TARGETS := *
+
+PRODUCT_VENDOR_PROPERTIES += \
+    ro.product.device=Infinix-X6711 \
+    ro.product.name=X6711-GL \
+    ro.product.model=Infinix X6711 \
+    ro.product.brand=Infinix \
+    ro.product.manufacturer=Infinix \
+    ro.hardware=mt6833
+
+# X6711 prebuilt kernel
+ifeq ($(TARGET_PREBUILT_KERNEL),)
+LOCAL_KERNEL := $(LOCAL_PATH)/prebuilt/kernel/Image.gz
+else
+LOCAL_KERNEL := $(TARGET_PREBUILT_KERNEL)
+endif
+PRODUCT_COPY_FILES += $(LOCAL_KERNEL):kernel
