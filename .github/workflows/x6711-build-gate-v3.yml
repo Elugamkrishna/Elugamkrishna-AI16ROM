@@ -9,6 +9,7 @@ jobs:
     runs-on: ubuntu-24.04-arm
 
     steps:
+
       - name: Checkout AI16ROM
         uses: actions/checkout@v4
         with:
@@ -17,6 +18,7 @@ jobs:
       - name: Runner Validation
         run: |
           set -exo pipefail
+
           echo "===== ARM64 RUNNER ====="
           uname -a
           uname -m
@@ -121,6 +123,19 @@ jobs:
           test -x \
             prebuilts/go/linux-arm64/pkg/tool/linux_arm64/compile
 
+          echo "===== GO STD CHECK ====="
+
+          ls -ld prebuilts/go/linux-arm64
+          ls -ld prebuilts/go/linux-arm64/pkg
+          ls -ld prebuilts/go/linux-arm64/pkg/linux_arm64 || true
+
+          test -f \
+            prebuilts/go/linux-arm64/pkg/linux_arm64/go/token.a
+
+          test -f \
+            prebuilts/go/linux-arm64/pkg/linux_arm64/io.a
+
+          echo "===== GO STD PASS ====="
           echo "===== ARM64 GO PASS ====="
 
       - name: Install X6711 Device Tree
