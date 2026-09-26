@@ -89,7 +89,6 @@ jobs:
             --no-tags \
             --optimized-fetch \
             --prune \
-            --partial-clone \
             --clone-filter=blob:limit=10M \
             -j2 \
             build/soong \
