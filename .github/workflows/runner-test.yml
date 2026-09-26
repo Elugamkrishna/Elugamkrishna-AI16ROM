@@ -1,0 +1,45 @@
+name: AI16ROM ARM64 Runner Test
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04-arm
+
+    steps:
+      - name: System information
+        run: |
+          echo "===== CPU ====="
+          nproc
+          uname -m
+          lscpu | head -25
+
+          echo
+          echo "===== MEMORY ====="
+          free -h
+
+          echo
+          echo "===== STORAGE ====="
+          df -h /
+
+          echo
+          echo "===== JAVA ====="
+          java -version || true
+
+          echo
+          echo "===== CLANG ====="
+          clang --version || true
+
+          echo
+          echo "===== NINJA ====="
+          ninja --version || true
+
+          echo
+          echo "===== GO ====="
+          go version || true
+
+          echo
+          echo "===== RUNNER ====="
+          echo "$RUNNER_OS"
+          echo "$RUNNER_ARCH"
