@@ -1,0 +1,118 @@
+name: AI16ROM X6711 Ninja Build
+
+'on':
+  workflow_dispatch:
+
+jobs:
+  ninja-build:
+    name: X6711 ARM64 Ninja Build
+    runs-on: ubuntu-24.04-arm
+
+    steps:
+      - name: Checkout AI16ROM
+        uses: actions/checkout@v4
+
+      - name: Install repo
+        run: |
+          set -exo pipefail
+          mkdir -p "$HOME/bin"
+
+          curl -fsSL \
+            https://storage.googleapis.com/git-repo-downloads/repo \
+            -o "$HOME/bin/repo"
+
+          chmod +x "$HOME/bin/repo"
+          echo "$HOME/bin" >> "$GITHUB_PATH"
+
+      - name: Initialize Android 16
+        run: |
+          set -exo pipefail
+          mkdir -p "$HOME/aosp"
+          cd "$HOME/aosp"
+
+          repo init \
+            -u https://android.googlesource.com/platform/manifest \
+            -b android16-release \
+            --depth=1 \
+            --partial-clone \
+            --clone-filter=blob:limit=10M \
+            --no-tags
+
+      - name: Sync Build Sources
+        run: |
+          set -exo pipefail
+          cd "$HOME/aosp"
+
+          repo sync \
+            --current-branch \
+            --no-tags \
+            --optimized-fetch \
+            --prune \
+            -j2 \
+            build/soong \
+            build/make \
+            build/blueprint \
+            external/golang-protobuf \
+            external/starlark-go \
+            prebuilts/bazel/common/proto
+
+      - name: Install ARM64 Go
+        run: |
+          set -exo pipefail
+          cd "$HOME/aosp"
+
+          GO_VERSION="1.24.13"
+          GO_ARCHIVE="go${GO_VERSION}.linux-arm64.tar.gz"
+
+          curl -fL \
+            "https://go.dev/dl/${GO_ARCHIVE}" \
+            -o "$HOME/$GO_ARCHIVE"
+
+          rm -rf prebuilts/go/linux-arm64
+          mkdir -p prebuilts/go/linux-arm64
+
+          tar -xzf "$HOME/$GO_ARCHIVE" \
+            --strip-components=1 \
+            -C prebuilts/go/linux-arm64
+
+          export GOROOT="$HOME/aosp/prebuilts/go/linux-arm64"
+          export PATH="$GOROOT/bin:$PATH"
+
+          GODEBUG=installgoroot=all \
+            "$GOROOT/bin/go" install std
+
+          "$GOROOT/bin/go" version
+
+      - name: Install X6711 Device Tree
+        run: |
+          set -exo pipefail
+          cd "$HOME/aosp"
+
+          mkdir -p device/infinix
+          cp -a "$GITHUB_WORKSPACE/device/infinix/X6711" device/infinix/
+
+      - name: Generate Soong Ninja
+        run: |
+          set -exo pipefail
+          cd "$HOME/aosp"
+
+          export GOROOT="$HOME/aosp/prebuilts/go/linux-arm64"
+          export PATH="$GOROOT/bin:$PATH"
+
+          source build/envsetup.sh
+          lunch aosp_X6711-bp2a-userdebug
+
+          build/soong/soong_ui.bash --make-mode nothing
+
+          test -f out/soong/build.aosp_X6711.ninja
+
+      - name: Ninja Validation
+        run: |
+          set -exo pipefail
+          cd "$HOME/aosp"
+
+          prebuilts/build-tools/linux-arm64/bin/ninja \
+            -f out/soong/build.aosp_X6711.ninja \
+            -n
+
+          echo "===== NINJA VALIDATION PASS ====="
