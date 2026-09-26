@@ -15,11 +15,11 @@ jobs:
         shell: bash
         run: |
           set -e
+
           sudo apt-get update
           sudo apt-get install -y git curl python3
 
           echo "===== RUNNER ====="
-          uname -a
           uname -m
           nproc
 
@@ -28,7 +28,7 @@ jobs:
           free -h
 
           echo
-          echo "===== STORAGE BEFORE ====="
+          echo "===== STORAGE ====="
           df -h /
 
       - name: Install repo tool
@@ -61,8 +61,6 @@ jobs:
             -u https://android.googlesource.com/platform/manifest \
             -b android16-release \
             --depth=1 \
-            --partial-clone \
-            --clone-filter=blob:limit=10M \
             --no-tags
 
           test -d .repo
@@ -88,27 +86,27 @@ jobs:
             --no-tags \
             --optimized-fetch \
             --prune \
-            --clone-filter=blob:limit=10M \
             -j2 \
             build/soong \
             build/make
 
           echo
           echo "===== SYNC RESULT ====="
+
           test -d build/soong
           test -d build/make
 
           echo "build/soong: PRESENT"
           echo "build/make: PRESENT"
 
-      - name: Source and storage verification
+      - name: Verify source
         shell: bash
         run: |
           set -e
 
           cd "$HOME/aosp"
 
-          echo "===== SOURCE ====="
+          echo "===== SOURCE SIZE ====="
           du -sh build/soong
           du -sh build/make
 
@@ -119,4 +117,4 @@ jobs:
           echo
           echo "===== RESULT ====="
           echo "Controlled AOSP source sync succeeded."
-          echo "Full AOSP source sync is NOT performed in this stage."
+          echo "Full AOSP source sync is NOT performed."
