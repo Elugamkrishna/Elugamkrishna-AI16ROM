@@ -158,6 +158,40 @@ jobs:
           command -v go || true
           go version || true
 
+      - name: Verify system Go for Soong
+        shell: bash
+        run: |
+          set -euxo pipefail
+
+          echo "=================================================="
+          echo " VERIFY SYSTEM GO"
+          echo "=================================================="
+
+          command -v go
+          go version
+
+          GO_ROOT="$(go env GOROOT)"
+
+          echo "GOROOT=$GO_ROOT"
+
+          test -x "$GO_ROOT/bin/go"
+          test -d "$GO_ROOT/src"
+
+          echo
+          echo "===== GO ROOT ====="
+
+          du -sh "$GO_ROOT"
+          ls -ld "$GO_ROOT"
+          ls -l "$GO_ROOT/bin/go"
+
+          echo
+          echo "===== GO ENV ====="
+
+          go env GOOS
+          go env GOARCH
+          go env GOROOT
+          go env GOPATH
+
       - name: Copy X6711 device tree
         shell: bash
         run: |
