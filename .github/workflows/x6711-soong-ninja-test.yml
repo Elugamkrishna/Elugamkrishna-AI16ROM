@@ -40,11 +40,11 @@ jobs:
 
           mkdir -p "$HOME/bin"
 
-          curl -L \
+          curl -fsSL \
             https://storage.googleapis.com/git-repo-downloads/repo \
             -o "$HOME/bin/repo"
 
-          chmod a+x "$HOME/bin/repo"
+          chmod 0755 "$HOME/bin/repo"
 
           echo "$HOME/bin" >> "$GITHUB_PATH"
 
@@ -66,12 +66,19 @@ jobs:
             --depth=1 \
             --no-tags
 
+          test -f .repo/manifest.xml
+
+          echo "===== AOSP INIT OK ====="
+          ls -lh .repo/manifest.xml
+
       - name: Sync required build dependencies
         shell: bash
         run: |
           set -euxo pipefail
 
           cd "$HOME/aosp"
+
+          echo "===== SYNC SOONG ====="
 
           repo sync \
             --current-branch \
@@ -84,16 +91,39 @@ jobs:
             build/blueprint \
             prebuilts/go
 
+          echo "===== SYNC COMPLETE ====="
+
           test -d build/soong
           test -d build/make
           test -d build/blueprint
           test -d prebuilts/go
 
-          echo "===== BUILD TREES ====="
+          echo "===== SIZES ====="
           du -sh build/soong
           du -sh build/make
           du -sh build/blueprint
           du -sh prebuilts/go
+
+      - name: Verify ARM64 Go
+        shell: bash
+        run: |
+          set -euxo pipefail
+
+          cd "$HOME/aosp"
+
+          echo "===== GO DIRECTORY ====="
+
+          find prebuilts/go -maxdepth 3 -type f \
+            -name go \
+            -print 2>/dev/null | head -20
+
+          echo "===== EXPECTED GO ====="
+
+          test -x prebuilts/go/linux-arm64/bin/go
+
+          file prebuilts/go/linux-arm64/bin/go
+
+          prebuilts/go/linux-arm64/bin/go version
 
       - name: Copy X6711 device tree
         shell: bash
@@ -108,24 +138,13 @@ jobs:
             "$GITHUB_WORKSPACE/device/infinix/X6711" \
             device/infinix/X6711
 
-          test -d device/infinix/X6711
+          test -f device/infinix/X6711/BoardConfig.mk
+          test -f device/infinix/X6711/AndroidProducts.mk
 
-      - name: Verify ARM64 Go
-        shell: bash
-        run: |
-          set -euxo pipefail
+          echo "===== X6711 DEVICE TREE OK ====="
 
-          cd "$HOME/aosp"
-
-          echo "===== GO TOOLCHAIN ====="
-
-          test -d prebuilts/go/linux-arm64
-
-          ls -ld prebuilts/go/linux-arm64
-
-          test -x prebuilts/go/linux-arm64/bin/go
-
-          prebuilts/go/linux-arm64/bin/go version
+          ls -lh device/infinix/X6711/BoardConfig.mk
+          ls -lh device/infinix/X6711/AndroidProducts.mk
 
       - name: Verify Ninja
         shell: bash
@@ -137,27 +156,27 @@ jobs:
           uname -m
           command -v ninja
           ninja --version
-
           file "$(command -v ninja)"
 
-      - name: Verify Soong microfactory
+      - name: Verify Soong files
         shell: bash
         run: |
           set -euxo pipefail
 
           cd "$HOME/aosp"
 
-          echo "===== BLUEPRINT MICROFACTORY ====="
+          echo "===== SOONG ====="
 
-          test -f build/blueprint/microfactory/microfactory.bash
-          ls -lh build/blueprint/microfactory/microfactory.bash
-
-          echo "===== SOONG MICROFACTORY ====="
-
+          test -f build/soong/soong_ui.bash
           test -f build/soong/scripts/microfactory.bash
-          ls -lh build/soong/scripts/microfactory.bash
+          test -f build/blueprint/microfactory/microfactory.bash
 
-      - name: Soong bootstrap diagnostic
+          ls -lh \
+            build/soong/soong_ui.bash \
+            build/soong/scripts/microfactory.bash \
+            build/blueprint/microfactory/microfactory.bash
+
+      - name: Soong diagnostic
         shell: bash
         run: |
           set +e
@@ -168,22 +187,32 @@ jobs:
 
           echo "===== ENV ====="
           echo "OUT_DIR=$OUT_DIR"
+          echo "PATH=$PATH"
+
+          echo
+          echo "===== GO ====="
+          prebuilts/go/linux-arm64/bin/go version
 
           echo
           echo "===== ENVSETUP ====="
-
           source build/envsetup.sh
 
           echo
           echo "===== LUNCH ====="
-
           lunch aosp_X6711-bp2a-userdebug
+
+          LUNCH_RC=$?
+
+          echo
+          echo "LUNCH EXIT CODE: $LUNCH_RC"
+
+          if [ "$LUNCH_RC" -ne 0 ]; then
+            exit "$LUNCH_RC"
+          fi
 
           echo
           echo "===== SOONG UI ====="
-
           ls -lh build/soong/soong_ui.bash
-          file build/soong/soong_ui.bash
 
           echo
           echo "===== SOONG START ====="
@@ -197,10 +226,10 @@ jobs:
           echo "$RC"
 
           echo
-          echo "===== SOONG OUTPUT ====="
+          echo "===== SOONG FILES ====="
 
           find "$OUT_DIR/soong" \
-            -maxdepth 2 \
+            -maxdepth 3 \
             -type f \
             \( \
               -name 'soong.environment.*' \
@@ -210,13 +239,7 @@ jobs:
             -print 2>/dev/null | sort
 
           echo
-          echo "===== OUT/SOONG SIZE ====="
-
-          du -sh "$OUT_DIR/soong" 2>/dev/null || true
-
-          echo
           echo "===== STORAGE ====="
-
           df -h "$HOME"
 
           exit "$RC"
