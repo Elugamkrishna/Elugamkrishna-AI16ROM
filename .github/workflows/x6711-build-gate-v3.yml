@@ -1,1 +1,14 @@
+name: AI16ROM X6711 Build Gate V3
 
+'on':
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - name: Runner Test
+        run: |
+          echo "AI16ROM X6711 V3"
+          uname -m
+          nproc
