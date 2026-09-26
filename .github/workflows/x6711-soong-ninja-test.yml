@@ -4,76 +4,69 @@ on:
   workflow_dispatch:
 
 jobs:
-  soong-bootstrap:
+  build:
+    name: X6711 ARM64 Soong Diagnostic
     runs-on: ubuntu-24.04-arm
 
     steps:
-
       - name: Checkout AI16ROM
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
 
-      - name: Prepare runner
-        shell: bash
+      - name: Runner Information
         run: |
-          set -euxo pipefail
-
-          sudo apt-get update
-          sudo apt-get install -y \
-            git \
-            curl \
-            python3 \
-            ninja-build \
-            bc \
-            bison \
-            flex \
-            build-essential
-
+          set -eux
           echo "===== RUNNER ====="
+          uname -a
           uname -m
           nproc
           free -h
           df -h /
+          echo
+          echo "===== JAVA ====="
+          java -version
+          echo
+          echo "===== CLANG ====="
+          clang --version
+          echo
+          echo "===== NINJA ====="
+          ninja --version
 
       - name: Install repo
-        shell: bash
         run: |
-          set -euxo pipefail
-
+          set -eux
           mkdir -p "$HOME/bin"
-
-          curl -fsSL \
-            https://storage.googleapis.com/git-repo-downloads/repo \
+          curl -fsSL https://storage.googleapis.com/git-repo-downloads/repo \
             -o "$HOME/bin/repo"
-
-          chmod 0755 "$HOME/bin/repo"
+          chmod +x "$HOME/bin/repo"
           echo "$HOME/bin" >> "$GITHUB_PATH"
-
           "$HOME/bin/repo" --version
 
-      - name: Initialize Android 16
-        shell: bash
+      - name: Initialize Android 16 AOSP
         run: |
-          set -euxo pipefail
+          set -eux
 
-          rm -rf "$HOME/aosp"
           mkdir -p "$HOME/aosp"
-
           cd "$HOME/aosp"
 
           repo init \
             -u https://android.googlesource.com/platform/manifest \
             -b android16-release \
             --depth=1 \
+            --partial-clone \
+            --clone-filter=blob:limit=10M \
             --no-tags
 
+          echo
+          echo "===== MANIFEST ====="
           test -f .repo/manifest.xml
+          grep -E 'revision=|android16-release' \
+            .repo/manifests/default.xml | head -20 || true
 
-          echo "===== AOSP INIT OK ====="
-
-      - name: Sync required build dependencies
-        shell: bash
+      - name: Sync Soong Build Make Blueprint
         run: |
-          set -euxo pipefail
+          set -eux
 
           cd "$HOME/aosp"
 
@@ -87,210 +80,191 @@ jobs:
             build/make \
             build/blueprint
 
-          test -d build/soong
-          test -d build/make
-          test -d build/blueprint
+          echo
+          echo "===== SYNCED PROJECTS ====="
+          repo list | grep -E 'build/(soong|make|blueprint)' || true
 
-          echo "===== BUILD DEPENDENCIES READY ====="
-
-      - name: Provide ARM64 Go path for Soong
-        shell: bash
+      - name: Prepare ARM64 Go
         run: |
-          set -euxo pipefail
+          set -eux
 
           cd "$HOME/aosp"
 
+          GO_BIN="$(command -v go)"
           GO_ROOT="$(go env GOROOT)"
 
           echo "===== SYSTEM GO ====="
-          go version
+          "$GO_BIN" version
           echo "GOROOT=$GO_ROOT"
 
-          test -x "$GO_ROOT/bin/go"
-          test -d "$GO_ROOT/src"
+          mkdir -p prebuilts/go
 
-          mkdir -p "$HOME/aosp/prebuilts/go"
+          if [ -e prebuilts/go/linux-arm64 ] && \
+             [ ! -L prebuilts/go/linux-arm64 ]; then
+            rm -rf prebuilts/go/linux-arm64
+          fi
 
-          rm -rf "$HOME/aosp/prebuilts/go/linux-arm64"
+          if [ ! -e prebuilts/go/linux-arm64 ]; then
+            ln -s "$GO_ROOT" prebuilts/go/linux-arm64
+          fi
 
-          ln -s \
-            "$GO_ROOT" \
-            "$HOME/aosp/prebuilts/go/linux-arm64"
+          export GOROOT="$GO_ROOT"
+          export PATH="$GOROOT/bin:$PATH"
 
-          test -x \
-            "$HOME/aosp/prebuilts/go/linux-arm64/bin/go"
+          echo
+          echo "===== ARM64 GO READY ====="
+          go version
+          go env GOOS GOARCH GOROOT
+          ls -ld prebuilts/go/linux-arm64
 
-          test -d \
-            "$HOME/aosp/prebuilts/go/linux-arm64/src"
-
-          "$HOME/aosp/prebuilts/go/linux-arm64/bin/go" version
-
-          echo "===== ARM64 GO PATH READY ====="
-
-      - name: Copy X6711 device tree
-        shell: bash
+      - name: Copy X6711 Device Tree
         run: |
-          set -euxo pipefail
+          set -eux
 
           cd "$HOME/aosp"
 
           mkdir -p device/infinix
+          cp -a "$GITHUB_WORKSPACE/device/infinix/X6711" \
+            device/infinix/
 
-          cp -a \
-            "$GITHUB_WORKSPACE/device/infinix/X6711" \
-            device/infinix/X6711
-
+          echo
+          echo "===== X6711 DEVICE TREE ====="
           test -f device/infinix/X6711/AndroidProducts.mk
           test -f device/infinix/X6711/BoardConfig.mk
           test -f device/infinix/X6711/device.mk
 
-          echo "===== X6711 DEVICE TREE READY ====="
+          find device/infinix/X6711 -maxdepth 2 -type f | \
+            sort | head -100
 
-      - name: AI16ROM X6711 - Soong Bootstrap
-        shell: bash
+      - name: Prepare Build Environment
         run: |
-          set -eo pipefail
+          set -eux
 
           cd "$HOME/aosp"
 
-          export OUT_DIR="$HOME/aosp/out"
+          export GOROOT="$(go env GOROOT)"
+          export PATH="$GOROOT/bin:$PATH"
 
           source build/envsetup.sh
+
           lunch aosp_X6711-bp2a-userdebug
 
-          echo "=================================================="
-          echo " AI16ROM X6711 - SOONG BOOTSTRAP"
-          echo "=================================================="
-
           echo
-          echo "===== TARGET ====="
+          echo "===== BUILD VARIABLES ====="
           echo "TARGET_PRODUCT=$TARGET_PRODUCT"
           echo "TARGET_BUILD_VARIANT=$TARGET_BUILD_VARIANT"
-          echo "TARGET_ARCH=$TARGET_ARCH"
-          echo "TARGET_ARCH_VARIANT=$TARGET_ARCH_VARIANT"
+          echo "OUT_DIR=$OUT_DIR"
           echo "TARGET_DEVICE=$TARGET_DEVICE"
-          echo "TARGET_BOARD_PLATFORM=$TARGET_BOARD_PLATFORM"
 
-          test "$TARGET_PRODUCT" = "aosp_X6711"
-          test "$TARGET_BUILD_VARIANT" = "userdebug"
-
-          echo
-          echo "===== GO ====="
-
-          "$HOME/aosp/prebuilts/go/linux-arm64/bin/go" version
-          "$HOME/aosp/prebuilts/go/linux-arm64/bin/go" env GOOS GOARCH GOROOT
-
-          echo
-          echo "===== SOONG BOOTSTRAP ====="
-
-          build/soong/soong_ui.bash --make-mode nothing
-
-          echo
-          echo "===== SOONG BOOTSTRAP PASS ====="
-
-      - name: AI16ROM X6711 - Ninja Build
-        shell: bash
-        run: |
-          set -eo pipefail
-
-          cd "$HOME/aosp"
-
-          export OUT_DIR="$HOME/aosp/out"
-
-          source build/envsetup.sh
-          lunch aosp_X6711-bp2a-userdebug
-
-          echo "=================================================="
-          echo " AI16ROM X6711 - NINJA BUILD"
-          echo "=================================================="
-
-          echo
-          echo "===== NINJA ====="
-          command -v ninja
-          ninja --version
-          uname -m
-
-          echo
-          echo "===== GENERATE NINJA FILES ====="
-
-          build/soong/soong_ui.bash --make-mode nothing
-
-          echo
-          echo "===== DIRECT NINJA ====="
-
-          NINJA_FILE="$OUT_DIR/combined-${TARGET_PRODUCT}.ninja"
-
-          if [ -f "$NINJA_FILE" ]; then
-            ninja \
-              -f "$NINJA_FILE" \
-              -j"$(nproc)" \
-              systemimage \
-              vendorimage \
-              productimage \
-              system_extimage \
-              bootimage \
-              vendorbootimage \
-              dtboimage \
-              vbmetaimage
-          else
-            echo "Combined Ninja file not found:"
-            echo "$NINJA_FILE"
-
-            echo
-            echo "Available Ninja files:"
-            find "$OUT_DIR" \
-              -type f \
-              -name "*.ninja" \
-              -print | head -100
-
-            exit 1
-          fi
-
-          echo
-          echo "=================================================="
-          echo " AI16ROM X6711 - NINJA BUILD PASS"
-          echo "=================================================="
-
-      - name: Verify build outputs
-        shell: bash
+      - name: Diagnose Blueprint Microfactory
         run: |
           set -euxo pipefail
 
           cd "$HOME/aosp"
 
-          PRODUCT_OUT="$OUT_DIR/target/product/X6711"
+          export GOROOT="$(go env GOROOT)"
+          export PATH="$GOROOT/bin:$PATH"
 
-          echo "===== BUILD OUTPUTS ====="
+          mkdir -p "$OUT_DIR"
 
-          if [ -d "$PRODUCT_OUT" ]; then
-            find "$PRODUCT_OUT" \
-              -maxdepth 1 \
-              -type f \
-              -printf '%f %s bytes\n' \
-              | sort
-          else
-            echo "PRODUCT_OUT not found:"
-            echo "$PRODUCT_OUT"
-            exit 1
+          echo "=============================================="
+          echo " BLUEPRINT MICROFACTORY DIRECT DIAGNOSTIC"
+          echo "=============================================="
+
+          echo
+          echo "===== GO ====="
+          go version
+          go env GOOS GOARCH GOROOT GOPATH GOFLAGS
+
+          echo
+          echo "===== BLUEPRINT ====="
+          test -f build/blueprint/microfactory/microfactory.go
+          sed -n '1,80p' build/blueprint/microfactory/microfactory.go
+
+          echo
+          echo "===== DIRECT GO BUILD ====="
+
+          set +e
+
+          go build \
+            -x \
+            -trimpath \
+            -o "$OUT_DIR/microfactory-test" \
+            ./build/blueprint/microfactory
+
+          STATUS=$?
+
+          set -e
+
+          echo
+          echo "=============================================="
+          echo " MICROFACTORY EXIT STATUS: $STATUS"
+          echo "=============================================="
+
+          if [ "$STATUS" -ne 0 ]; then
+            echo
+            echo "===== GO ENVIRONMENT ====="
+            go env
+            echo
+            echo "===== COMPILER ====="
+            command -v go
+            command -v compile || true
+            go env GOROOT
+            ls -l "$(go env GOROOT)/pkg/tool/linux_arm64/compile"
+            exit "$STATUS"
           fi
 
           echo
-          echo "===== OUTPUT SIZE ====="
+          echo "===== MICROFACTORY BUILD SUCCESS ====="
+          file "$OUT_DIR/microfactory-test"
+          ls -lh "$OUT_DIR/microfactory-test"
 
-          du -sh "$PRODUCT_OUT"
+      - name: Soong Bootstrap Diagnostic
+        if: success()
+        run: |
+          set -euxo pipefail
+
+          cd "$HOME/aosp"
+
+          export GOROOT="$(go env GOROOT)"
+          export PATH="$GOROOT/bin:$PATH"
+
+          echo "===== SOONG BOOTSTRAP ====="
+
+          set +e
+
+          build/soong/soong_ui.bash \
+            --make-mode \
+            nothing 2>&1 | tee "$GITHUB_WORKSPACE/soong-bootstrap.log"
+
+          STATUS=${PIPESTATUS[0]}
+
+          set -e
 
           echo
-          echo "===== STORAGE ====="
+          echo "SOONG EXIT STATUS: $STATUS"
 
-          df -h "$HOME"
+          if [ -f "$GITHUB_WORKSPACE/soong-bootstrap.log" ]; then
+            echo
+            echo "===== LAST 200 SOONG LINES ====="
+            tail -200 "$GITHUB_WORKSPACE/soong-bootstrap.log"
+          fi
 
-      - name: Final status
-        shell: bash
+          exit "$STATUS"
+
+      - name: Upload Diagnostic Logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: x6711-soong-diagnostic
+          path: |
+            /home/runner/aosp/soong-bootstrap.log
+            /home/runner/aosp/out/**/*.log
+          if-no-files-found: ignore
+
+      - name: Final Status
+        if: always()
         run: |
-          echo "=================================================="
-          echo " AI16ROM X6711 BUILD FINISHED"
-          echo "=================================================="
-
-          echo "SOONG : PASS"
-          echo "NINJA : PASS"
-          echo "X6711 : PASS"
+          echo "=============================================="
+          echo " AI16ROM X6711 BUILD DIAGNOSTIC COMPLETE"
+          echo "=============================================="
