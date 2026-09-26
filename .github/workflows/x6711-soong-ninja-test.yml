@@ -1,0 +1,151 @@
+name: AI16ROM X6711 Soong Ninja Test
+
+on:
+  workflow_dispatch:
+
+jobs:
+  soong-ninja:
+    runs-on: ubuntu-24.04-arm
+
+    steps:
+      - name: Checkout AI16ROM
+        uses: actions/checkout@v4
+
+      - name: Prepare runner
+        shell: bash
+        run: |
+          set -euxo pipefail
+          sudo apt-get update
+          sudo apt-get install -y git curl python3 ninja-build bc bison flex build-essential
+
+          echo "===== RUNNER ====="
+          uname -m
+          nproc
+          free -h
+          df -h /
+
+      - name: Install repo
+        shell: bash
+        run: |
+          set -euxo pipefail
+          mkdir -p "$HOME/bin"
+          curl -L https://storage.googleapis.com/git-repo-downloads/repo \
+            -o "$HOME/bin/repo"
+          chmod a+x "$HOME/bin/repo"
+          echo "$HOME/bin" >> "$GITHUB_PATH"
+          "$HOME/bin/repo" --version
+
+      - name: Initialize Android 16
+        shell: bash
+        run: |
+          set -euxo pipefail
+          rm -rf "$HOME/aosp"
+          mkdir -p "$HOME/aosp"
+          cd "$HOME/aosp"
+
+          repo init \
+            -u https://android.googlesource.com/platform/manifest \
+            -b android16-release \
+            --depth=1 \
+            --no-tags
+
+      - name: Sync Soong and Make
+        shell: bash
+        run: |
+          set -euxo pipefail
+          cd "$HOME/aosp"
+
+          repo sync \
+            --current-branch \
+            --no-tags \
+            --optimized-fetch \
+            --prune \
+            -j2 \
+            build/soong \
+            build/make
+
+          test -d build/soong
+          test -d build/make
+
+      - name: Copy X6711 device tree
+        shell: bash
+        run: |
+          set -euxo pipefail
+          cd "$HOME/aosp"
+
+          mkdir -p device/infinix
+          cp -a "$GITHUB_WORKSPACE/device/infinix/X6711" \
+            device/infinix/X6711
+
+      - name: Verify Ninja
+        shell: bash
+        run: |
+          set -euxo pipefail
+
+          echo "===== NINJA ====="
+          uname -m
+          command -v ninja
+          ninja --version
+          file "$(command -v ninja)"
+
+      - name: Soong bootstrap diagnostic
+        shell: bash
+        run: |
+          set +e
+          cd "$HOME/aosp"
+
+          export OUT_DIR="$HOME/aosp/out"
+
+          echo "===== ENV ====="
+          echo "PWD=$PWD"
+          echo "OUT_DIR=$OUT_DIR"
+          echo "PATH=$PATH"
+
+          echo
+          echo "===== DEVICE TREE ====="
+          test -f device/infinix/X6711/AndroidProducts.mk
+          test -f device/infinix/X6711/BoardConfig.mk
+          test -f device/infinix/X6711/device.mk
+
+          echo
+          echo "===== ENVSETUP ====="
+          test -f build/envsetup.sh
+          source build/envsetup.sh
+
+          echo
+          echo "===== LUNCH ====="
+          lunch aosp_X6711-bp2a-userdebug
+
+          echo
+          echo "===== SOONG UI ====="
+          ls -lh build/soong/soong_ui.bash
+          file build/soong/soong_ui.bash
+
+          echo
+          echo "===== SOONG START ====="
+          build/soong/soong_ui.bash --make-mode \
+            nothing
+
+          RC=$?
+
+          echo
+          echo "===== SOONG EXIT CODE ====="
+          echo "$RC"
+
+          echo
+          echo "===== SOONG OUTPUT ====="
+          find "$OUT_DIR/soong" -maxdepth 2 -type f \
+            \( -name 'soong.environment.*' \
+            -o -name '*.ninja' \
+            -o -name '*.log' \) \
+            -print 2>/dev/null | sort
+
+          echo
+          echo "===== OUT/ SOONG SIZE ====="
+          du -sh "$OUT_DIR/soong" 2>/dev/null || true
+
+          echo
+          echo "===== STORAGE ====="
+          df -h "$HOME"
+
+          exit "$RC"
