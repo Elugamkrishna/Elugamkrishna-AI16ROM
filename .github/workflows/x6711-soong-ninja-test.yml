@@ -192,6 +192,66 @@ jobs:
           go env GOROOT
           go env GOPATH
 
+      - name: Provide ARM64 Go path for Soong
+        shell: bash
+        run: |
+          set -euxo pipefail
+
+          cd "$HOME/aosp"
+
+          echo "=================================================="
+          echo " PROVIDE ARM64 GO PATH FOR SOONG"
+          echo "=================================================="
+
+          GO_ROOT="$(go env GOROOT)"
+
+          echo
+          echo "===== SYSTEM GO ====="
+
+          go version
+          echo "GOROOT=$GO_ROOT"
+
+          test -d "$GO_ROOT"
+          test -x "$GO_ROOT/bin/go"
+          test -d "$GO_ROOT/src"
+
+          echo
+          echo "===== CREATE SOONG GO PATH ====="
+
+          mkdir -p "$HOME/aosp/prebuilts/go"
+
+          if [ -e "$HOME/aosp/prebuilts/go/linux-arm64" ] || \
+             [ -L "$HOME/aosp/prebuilts/go/linux-arm64" ]; then
+            rm -rf "$HOME/aosp/prebuilts/go/linux-arm64"
+          fi
+
+          ln -s "$GO_ROOT" \
+            "$HOME/aosp/prebuilts/go/linux-arm64"
+
+          echo
+          echo "===== SOONG GO PATH ====="
+
+          ls -ld "$HOME/aosp/prebuilts/go/linux-arm64"
+
+          test -x \
+            "$HOME/aosp/prebuilts/go/linux-arm64/bin/go"
+
+          test -d \
+            "$HOME/aosp/prebuilts/go/linux-arm64/src"
+
+          "$HOME/aosp/prebuilts/go/linux-arm64/bin/go" version
+
+          echo
+          echo "===== GO PATH TEST ====="
+
+          "$HOME/aosp/prebuilts/go/linux-arm64/bin/go" \
+            env GOOS GOARCH GOROOT
+
+          echo
+          echo "=================================================="
+          echo " ARM64 GO PATH READY"
+          echo "=================================================="
+
       - name: Copy X6711 device tree
         shell: bash
         run: |
@@ -233,6 +293,14 @@ jobs:
           test -f device/infinix/X6711/BoardConfig.mk
 
           echo "Source checks: PASS"
+
+          echo
+          echo "===== GO CHECK ====="
+
+          test -x \
+            "$HOME/aosp/prebuilts/go/linux-arm64/bin/go"
+
+          "$HOME/aosp/prebuilts/go/linux-arm64/bin/go" version
 
           echo
           echo "===== ENVSETUP ====="
