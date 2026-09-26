@@ -1,0 +1,147 @@
+name: AI16ROM X6711 Dependency Test
+
+on:
+  workflow_dispatch:
+
+jobs:
+  dependency-test:
+    runs-on: ubuntu-24.04-arm
+
+    steps:
+      - name: Checkout AI16ROM
+        uses: actions/checkout@v4
+
+      - name: Prepare
+        shell: bash
+        run: |
+          set -e
+          sudo apt-get update
+          sudo apt-get install -y git curl python3
+
+          echo "===== RUNNER ====="
+          uname -m
+          nproc
+          free -h
+          df -h /
+
+      - name: Install repo
+        shell: bash
+        run: |
+          set -e
+          mkdir -p "$HOME/bin"
+          curl -L https://storage.googleapis.com/git-repo-downloads/repo \
+            -o "$HOME/bin/repo"
+          chmod a+x "$HOME/bin/repo"
+          echo "$HOME/bin" >> "$GITHUB_PATH"
+          "$HOME/bin/repo" --version
+
+      - name: Initialize Android 16
+        shell: bash
+        run: |
+          set -e
+          rm -rf "$HOME/aosp"
+          mkdir -p "$HOME/aosp"
+          cd "$HOME/aosp"
+
+          repo init \
+            -u https://android.googlesource.com/platform/manifest \
+            -b android16-release \
+            --depth=1 \
+            --no-tags
+
+          test -d .repo
+          echo "===== AOSP MANIFEST READY ====="
+
+      - name: Controlled source sync
+        shell: bash
+        run: |
+          set -e
+          cd "$HOME/aosp"
+
+          repo sync \
+            --current-branch \
+            --no-tags \
+            --optimized-fetch \
+            --prune \
+            -j2 \
+            build/soong \
+            build/make
+
+          test -d build/soong
+          test -d build/make
+
+      - name: Copy X6711 device tree
+        shell: bash
+        run: |
+          set -e
+          cd "$HOME/aosp"
+
+          mkdir -p device/infinix
+          cp -a "$GITHUB_WORKSPACE/device/infinix/X6711" \
+            device/infinix/
+
+          echo "===== X6711 DEVICE TREE ====="
+          find device/infinix/X6711 -maxdepth 2 -type f | sort | head -200
+
+      - name: Check device configuration
+        shell: bash
+        run: |
+          set -e
+          cd "$HOME/aosp"
+
+          echo "===== PRODUCT ====="
+          cat device/infinix/X6711/AndroidProducts.mk
+
+          echo
+          echo "===== DEVICE MK ====="
+          sed -n '1,220p' device/infinix/X6711/device.mk
+
+          echo
+          echo "===== BOARD CONFIG ====="
+          sed -n '1,260p' device/infinix/X6711/BoardConfig.mk
+
+      - name: Check vendor tree
+        shell: bash
+        run: |
+          set -e
+          cd "$HOME/aosp"
+
+          echo "===== VENDOR REFERENCE ====="
+          cat device/infinix/X6711/vendor/infinix/X6711/X6711-vendor.mk \
+            2>/dev/null || true
+
+          echo
+          echo "===== VENDOR DIRECTORIES ====="
+          find device/infinix/X6711 -maxdepth 4 -type d | sort
+
+      - name: Dependency report
+        shell: bash
+        run: |
+          set -e
+          cd "$HOME/aosp"
+
+          echo "===== REQUIRED AOSP DIRECTORIES ====="
+          for d in \
+            build/soong \
+            build/make \
+            frameworks \
+            system \
+            hardware \
+            packages \
+            vendor \
+            prebuilts \
+            kernel
+          do
+            if [ -d "$d" ]; then
+              echo "PRESENT  $d"
+            else
+              echo "MISSING  $d"
+            fi
+          done
+
+          echo
+          echo "===== STORAGE ====="
+          df -h "$HOME"
+
+          echo
+          echo "===== DEPENDENCY TEST COMPLETE ====="
