@@ -1,19 +1,25 @@
-name: AI16ROM ARM64 Runner Test
+name: AI16ROM AOSP Preflight
 
 on:
   workflow_dispatch:
 
 jobs:
-  test:
+  preflight:
     runs-on: ubuntu-24.04-arm
 
     steps:
-      - name: System information
+      - name: Checkout AI16ROM
+        uses: actions/checkout@v4
+
+      - name: AOSP source and build preflight
+        shell: bash
         run: |
-          echo "===== CPU ====="
-          nproc
+          set -e
+
+          echo "===== RUNNER ====="
+          uname -a
           uname -m
-          lscpu | head -25
+          nproc
 
           echo
           echo "===== MEMORY ====="
@@ -24,22 +30,37 @@ jobs:
           df -h /
 
           echo
-          echo "===== JAVA ====="
-          java -version || true
+          echo "===== AI16ROM REPOSITORY ====="
+          pwd
+          du -sh .
+          find device/infinix/X6711 -maxdepth 2 -type f | wc -l
 
           echo
-          echo "===== CLANG ====="
-          clang --version || true
+          echo "===== AOSP SOURCE CHECK ====="
+          for d in build frameworks system packages vendor device kernel; do
+            if [ -d "$d" ]; then
+              echo "PRESENT: $d"
+            else
+              echo "MISSING: $d"
+            fi
+          done
 
           echo
-          echo "===== NINJA ====="
-          ninja --version || true
+          echo "===== SOONG CHECK ====="
+          if [ -f build/soong/soong_ui.bash ]; then
+            echo "Soong source: PRESENT"
+          else
+            echo "Soong source: MISSING"
+          fi
 
           echo
-          echo "===== GO ====="
-          go version || true
+          echo "===== AOSP STATUS ====="
+          if [ -d .repo ]; then
+            echo ".repo: PRESENT"
+          else
+            echo ".repo: MISSING"
+          fi
 
           echo
-          echo "===== RUNNER ====="
-          echo "$RUNNER_OS"
-          echo "$RUNNER_ARCH"
+          echo "===== RESULT ====="
+          echo "Runner is ready for the next AOSP provisioning stage."
