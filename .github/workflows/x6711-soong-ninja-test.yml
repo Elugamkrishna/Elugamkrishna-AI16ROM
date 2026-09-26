@@ -104,6 +104,60 @@ jobs:
           du -sh build/make
           du -sh build/blueprint
 
+      - name: Locate Android Go toolchain
+        shell: bash
+        run: |
+          set -euxo pipefail
+
+          cd "$HOME/aosp"
+
+          echo "=================================================="
+          echo " LOCATING ANDROID GO TOOLCHAIN"
+          echo "=================================================="
+
+          echo
+          echo "===== GO REFERENCES IN MANIFEST ====="
+
+          grep -R \
+            -n \
+            -E 'prebuilts/go|linux-arm64.*go|path="[^"]*go[^"]*"' \
+            .repo/manifests \
+            .repo/manifest.xml \
+            2>/dev/null | head -100 || true
+
+          echo
+          echo "===== GO REFERENCES IN SOONG ====="
+
+          grep -R \
+            -n \
+            -E 'prebuilts/go|linux-arm64' \
+            build/soong \
+            build/blueprint \
+            2>/dev/null | head -100 || true
+
+          echo
+          echo "===== MANIFEST PROJECTS ====="
+
+          repo list | grep -Ei 'go|prebuilt' | head -100 || true
+
+          echo
+          echo "===== EXISTING GO PATHS ====="
+
+          find . \
+            -maxdepth 5 \
+            -type d \
+            \( \
+              -path '*/prebuilts/go*' \
+              -o -name 'linux-arm64' \
+            \) \
+            -print 2>/dev/null | head -100 || true
+
+          echo
+          echo "===== SYSTEM GO ====="
+
+          command -v go || true
+          go version || true
+
       - name: Copy X6711 device tree
         shell: bash
         run: |
