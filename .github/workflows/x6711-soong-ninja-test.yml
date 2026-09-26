@@ -252,6 +252,85 @@ jobs:
           echo " ARM64 GO PATH READY"
           echo "=================================================="
 
+      - name: Diagnose ARM64 Go Compiler
+        shell: bash
+        run: |
+          set -euxo pipefail
+
+          cd "$HOME/aosp"
+
+          echo "=================================================="
+          echo " DIAGNOSE ARM64 GO COMPILER"
+          echo "=================================================="
+
+          GO_ROOT="$HOME/aosp/prebuilts/go/linux-arm64"
+
+          echo
+          echo "===== GO VERSION ====="
+
+          "$GO_ROOT/bin/go" version
+
+          echo
+          echo "===== GO ROOT ====="
+
+          "$GO_ROOT/bin/go" env GOROOT
+          "$GO_ROOT/bin/go" env GOOS
+          "$GO_ROOT/bin/go" env GOARCH
+
+          echo
+          echo "===== GO COMPILER ====="
+
+          ls -l \
+            "$GO_ROOT/pkg/tool/linux_arm64/compile"
+
+          file \
+            "$GO_ROOT/pkg/tool/linux_arm64/compile"
+
+          echo
+          echo "===== GO TOOLCHAIN ====="
+
+          "$GO_ROOT/bin/go" env GOTOOLDIR
+
+          echo
+          echo "===== MICROFACTORY SOURCE ====="
+
+          test -f build/blueprint/microfactory/microfactory.go
+
+          sed -n \
+            '1,220p' \
+            build/blueprint/microfactory/microfactory.go
+
+          echo
+          echo "===== DIRECT MICROFACTORY BUILD ====="
+
+          mkdir -p \
+            out/microfactory-diagnostic
+
+          "$GO_ROOT/bin/go" \
+            build \
+            -x \
+            -trimpath \
+            -o \
+            out/microfactory-diagnostic/microfactory \
+            ./build/blueprint/microfactory
+
+          echo
+          echo "===== MICROFACTORY BUILD RESULT ====="
+
+          test -x \
+            out/microfactory-diagnostic/microfactory
+
+          file \
+            out/microfactory-diagnostic/microfactory
+
+          ls -lh \
+            out/microfactory-diagnostic/microfactory
+
+          echo
+          echo "=================================================="
+          echo " ARM64 GO COMPILER DIAGNOSTIC PASSED"
+          echo "=================================================="
+
       - name: Copy X6711 device tree
         shell: bash
         run: |
@@ -300,7 +379,8 @@ jobs:
           test -x \
             "$HOME/aosp/prebuilts/go/linux-arm64/bin/go"
 
-          "$HOME/aosp/prebuilts/go/linux-arm64/bin/go" version
+          "$HOME/aosp/prebuilts/go/linux-arm64/bin/go" \
+            version
 
           echo
           echo "===== ENVSETUP ====="
@@ -364,7 +444,9 @@ jobs:
           echo
           echo "===== SOONG SIZE ====="
 
-          du -sh "$OUT_DIR/soong" 2>/dev/null || true
+          du -sh \
+            "$OUT_DIR/soong" \
+            2>/dev/null || true
 
           echo
           echo "=================================================="
