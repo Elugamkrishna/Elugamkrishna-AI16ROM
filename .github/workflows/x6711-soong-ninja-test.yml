@@ -102,7 +102,7 @@ jobs:
 
           GO_ROOT="$(go env GOROOT)"
 
-          echo "System Go:"
+          echo "===== SYSTEM GO ====="
           go version
           echo "GOROOT=$GO_ROOT"
 
@@ -120,9 +120,12 @@ jobs:
           test -x \
             "$HOME/aosp/prebuilts/go/linux-arm64/bin/go"
 
+          test -d \
+            "$HOME/aosp/prebuilts/go/linux-arm64/src"
+
           "$HOME/aosp/prebuilts/go/linux-arm64/bin/go" version
 
-          echo "===== ARM64 GO READY ====="
+          echo "===== ARM64 GO PATH READY ====="
 
       - name: Copy X6711 device tree
         shell: bash
@@ -153,23 +156,36 @@ jobs:
           export OUT_DIR="$HOME/aosp/out"
 
           source build/envsetup.sh
-
           lunch aosp_X6711-bp2a-userdebug
 
+          echo "=================================================="
+          echo " AI16ROM X6711 - SOONG BOOTSTRAP"
+          echo "=================================================="
+
+          echo
           echo "===== TARGET ====="
           echo "TARGET_PRODUCT=$TARGET_PRODUCT"
           echo "TARGET_BUILD_VARIANT=$TARGET_BUILD_VARIANT"
           echo "TARGET_ARCH=$TARGET_ARCH"
+          echo "TARGET_ARCH_VARIANT=$TARGET_ARCH_VARIANT"
           echo "TARGET_DEVICE=$TARGET_DEVICE"
           echo "TARGET_BOARD_PLATFORM=$TARGET_BOARD_PLATFORM"
 
           test "$TARGET_PRODUCT" = "aosp_X6711"
           test "$TARGET_BUILD_VARIANT" = "userdebug"
 
+          echo
+          echo "===== GO ====="
+
+          "$HOME/aosp/prebuilts/go/linux-arm64/bin/go" version
+          "$HOME/aosp/prebuilts/go/linux-arm64/bin/go" env GOOS GOARCH GOROOT
+
+          echo
           echo "===== SOONG BOOTSTRAP ====="
 
           build/soong/soong_ui.bash --make-mode nothing
 
+          echo
           echo "===== SOONG BOOTSTRAP PASS ====="
 
       - name: AI16ROM X6711 - Ninja Build
@@ -182,11 +198,10 @@ jobs:
           export OUT_DIR="$HOME/aosp/out"
 
           source build/envsetup.sh
-
           lunch aosp_X6711-bp2a-userdebug
 
           echo "=================================================="
-          echo " AI16ROM X6711 - DIRECT NINJA BUILD"
+          echo " AI16ROM X6711 - NINJA BUILD"
           echo "=================================================="
 
           echo
@@ -196,18 +211,40 @@ jobs:
           uname -m
 
           echo
-          echo "===== BUILD TARGET ====="
+          echo "===== GENERATE NINJA FILES ====="
 
-          m \
-            -j"$(nproc)" \
-            systemimage \
-            vendorimage \
-            productimage \
-            system_extimage \
-            bootimage \
-            vendorbootimage \
-            dtboimage \
-            vbmetaimage
+          build/soong/soong_ui.bash --make-mode nothing
+
+          echo
+          echo "===== DIRECT NINJA ====="
+
+          NINJA_FILE="$OUT_DIR/combined-${TARGET_PRODUCT}.ninja"
+
+          if [ -f "$NINJA_FILE" ]; then
+            ninja \
+              -f "$NINJA_FILE" \
+              -j"$(nproc)" \
+              systemimage \
+              vendorimage \
+              productimage \
+              system_extimage \
+              bootimage \
+              vendorbootimage \
+              dtboimage \
+              vbmetaimage
+          else
+            echo "Combined Ninja file not found:"
+            echo "$NINJA_FILE"
+
+            echo
+            echo "Available Ninja files:"
+            find "$OUT_DIR" \
+              -type f \
+              -name "*.ninja" \
+              -print | head -100
+
+            exit 1
+          fi
 
           echo
           echo "=================================================="
@@ -221,18 +258,26 @@ jobs:
 
           cd "$HOME/aosp"
 
+          PRODUCT_OUT="$OUT_DIR/target/product/X6711"
+
           echo "===== BUILD OUTPUTS ====="
 
-          find "$OUT_DIR/target/product/X6711" \
-            -maxdepth 1 \
-            -type f \
-            -printf '%f %s bytes\n' \
-            2>/dev/null | sort || true
+          if [ -d "$PRODUCT_OUT" ]; then
+            find "$PRODUCT_OUT" \
+              -maxdepth 1 \
+              -type f \
+              -printf '%f %s bytes\n' \
+              | sort
+          else
+            echo "PRODUCT_OUT not found:"
+            echo "$PRODUCT_OUT"
+            exit 1
+          fi
 
           echo
           echo "===== OUTPUT SIZE ====="
 
-          du -sh "$OUT_DIR/target/product/X6711" 2>/dev/null || true
+          du -sh "$PRODUCT_OUT"
 
           echo
           echo "===== STORAGE ====="
@@ -245,3 +290,7 @@ jobs:
           echo "=================================================="
           echo " AI16ROM X6711 BUILD FINISHED"
           echo "=================================================="
+
+          echo "SOONG : PASS"
+          echo "NINJA : PASS"
+          echo "X6711 : PASS"
