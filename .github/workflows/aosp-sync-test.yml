@@ -15,7 +15,6 @@ jobs:
         shell: bash
         run: |
           set -e
-
           sudo apt-get update
           sudo apt-get install -y git curl python3
 
@@ -112,10 +111,6 @@ jobs:
           echo "===== SOURCE ====="
           du -sh build/soong
           du -sh build/make
-
-          echo
-          echo "===== GIT ====="
-          git --version
 
           echo
           echo "===== STORAGE AFTER SYNC ====="
