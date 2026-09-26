@@ -32,7 +32,7 @@ jobs:
           echo "===== NINJA ====="
           ninja --version
 
-          echo "===== GO ====="
+          echo "===== RUNNER GO ====="
           go version
 
       - name: Install repo
@@ -97,37 +97,47 @@ jobs:
           echo "build/make      : PASS"
           echo "build/blueprint : PASS"
 
-      - name: Prepare ARM64 Go
+      - name: Install Complete ARM64 Go
         run: |
           set -exo pipefail
 
           cd "$HOME/aosp"
 
-          GO_ROOT="$(go env GOROOT)"
+          GO_VERSION="1.24.13"
+          GO_ARCHIVE="go${GO_VERSION}.linux-arm64.tar.gz"
+          GO_URL="https://go.dev/dl/${GO_ARCHIVE}"
+          GO_SHA256="74d97be1cc3a474129590c67ebf748a96e72d9f3a2b6fef3ed3275de591d49b3"
 
-          echo "GOROOT=$GO_ROOT"
-          go version
-          go env GOOS GOARCH
+          echo "===== DOWNLOAD OFFICIAL GO ARM64 ====="
 
-          mkdir -p prebuilts/go
+          curl -fL \
+            "$GO_URL" \
+            -o "$HOME/$GO_ARCHIVE"
 
-          if [ -e prebuilts/go/linux-arm64 ] && \
-             [ ! -L prebuilts/go/linux-arm64 ]; then
-            rm -rf prebuilts/go/linux-arm64
-          fi
+          echo "${GO_SHA256}  $HOME/$GO_ARCHIVE" | sha256sum -c -
 
-          if [ ! -e prebuilts/go/linux-arm64 ]; then
-            ln -s "$GO_ROOT" prebuilts/go/linux-arm64
-          fi
+          echo "===== GO CHECKSUM PASS ====="
+
+          rm -rf prebuilts/go/linux-arm64
+
+          mkdir -p prebuilts/go/linux-arm64
+
+          tar \
+            -xzf "$HOME/$GO_ARCHIVE" \
+            --strip-components=1 \
+            -C prebuilts/go/linux-arm64
+
+          test -x \
+            prebuilts/go/linux-arm64/bin/go
 
           test -x \
             prebuilts/go/linux-arm64/pkg/tool/linux_arm64/compile
 
-          echo "===== GO STD CHECK ====="
+          echo "===== GO VERSION ====="
 
-          ls -ld prebuilts/go/linux-arm64
-          ls -ld prebuilts/go/linux-arm64/pkg
-          ls -ld prebuilts/go/linux-arm64/pkg/linux_arm64 || true
+          prebuilts/go/linux-arm64/bin/go version
+
+          echo "===== GO STANDARD LIBRARY ====="
 
           test -f \
             prebuilts/go/linux-arm64/pkg/linux_arm64/go/token.a
@@ -135,8 +145,14 @@ jobs:
           test -f \
             prebuilts/go/linux-arm64/pkg/linux_arm64/io.a
 
-          echo "===== GO STD PASS ====="
-          echo "===== ARM64 GO PASS ====="
+          test -f \
+            prebuilts/go/linux-arm64/pkg/linux_arm64/io/ioutil.a
+
+          echo "go/token.a : PASS"
+          echo "io.a       : PASS"
+          echo "io/ioutil  : PASS"
+
+          echo "===== COMPLETE ARM64 GO PASS ====="
 
       - name: Install X6711 Device Tree
         run: |
@@ -145,6 +161,7 @@ jobs:
           cd "$HOME/aosp"
 
           mkdir -p device/infinix
+
           rm -rf device/infinix/X6711
 
           cp -a \
@@ -164,8 +181,15 @@ jobs:
 
           cd "$HOME/aosp"
 
-          export GOROOT="$(go env GOROOT)"
+          export GOROOT="$HOME/aosp/prebuilts/go/linux-arm64"
           export PATH="$GOROOT/bin:$PATH"
+
+          echo "===== AOSP GOROOT ====="
+          echo "GOROOT=$GOROOT"
+
+          "$GOROOT/bin/go" version
+
+          "$GOROOT/bin/go" env GOOS GOARCH
 
           source build/envsetup.sh
 
@@ -186,10 +210,11 @@ jobs:
 
           cd "$HOME/aosp"
 
-          export GOROOT="$(go env GOROOT)"
+          export GOROOT="$HOME/aosp/prebuilts/go/linux-arm64"
           export PATH="$GOROOT/bin:$PATH"
 
           source build/envsetup.sh
+
           lunch aosp_X6711-bp2a-userdebug
 
           echo "=============================================="
