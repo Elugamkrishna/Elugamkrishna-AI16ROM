@@ -49,7 +49,7 @@ jobs:
             --depth=1 \
             --no-tags
 
-      - name: Sync Soong and Make
+      - name: Sync required Soong dependencies
         shell: bash
         run: |
           set -euxo pipefail
@@ -62,10 +62,17 @@ jobs:
             --prune \
             -j2 \
             build/soong \
-            build/make
+            build/make \
+            build/blueprint
 
           test -d build/soong
           test -d build/make
+          test -d build/blueprint
+
+          echo "===== REQUIRED BUILD TREES ====="
+          du -sh build/soong
+          du -sh build/make
+          du -sh build/blueprint
 
       - name: Copy X6711 device tree
         shell: bash
@@ -88,6 +95,20 @@ jobs:
           ninja --version
           file "$(command -v ninja)"
 
+      - name: Verify Soong microfactory dependency
+        shell: bash
+        run: |
+          set -euxo pipefail
+          cd "$HOME/aosp"
+
+          echo "===== BLUEPRINT MICROFACTORY ====="
+          test -f build/blueprint/microfactory/microfactory.bash
+          ls -lh build/blueprint/microfactory/microfactory.bash
+
+          echo "===== SOONG MICROFACTORY ====="
+          test -f build/soong/scripts/microfactory.bash
+          ls -lh build/soong/scripts/microfactory.bash
+
       - name: Soong bootstrap diagnostic
         shell: bash
         run: |
@@ -99,17 +120,9 @@ jobs:
           echo "===== ENV ====="
           echo "PWD=$PWD"
           echo "OUT_DIR=$OUT_DIR"
-          echo "PATH=$PATH"
-
-          echo
-          echo "===== DEVICE TREE ====="
-          test -f device/infinix/X6711/AndroidProducts.mk
-          test -f device/infinix/X6711/BoardConfig.mk
-          test -f device/infinix/X6711/device.mk
 
           echo
           echo "===== ENVSETUP ====="
-          test -f build/envsetup.sh
           source build/envsetup.sh
 
           echo
@@ -123,8 +136,7 @@ jobs:
 
           echo
           echo "===== SOONG START ====="
-          build/soong/soong_ui.bash --make-mode \
-            nothing
+          build/soong/soong_ui.bash --make-mode nothing
 
           RC=$?
 
@@ -141,7 +153,7 @@ jobs:
             -print 2>/dev/null | sort
 
           echo
-          echo "===== OUT/ SOONG SIZE ====="
+          echo "===== OUT/SOONG SIZE ====="
           du -sh "$OUT_DIR/soong" 2>/dev/null || true
 
           echo
