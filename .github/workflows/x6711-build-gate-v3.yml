@@ -4,11 +4,205 @@ name: AI16ROM X6711 Build Gate V3
   workflow_dispatch:
 
 jobs:
-  test:
+  x6711-build-gate:
+    name: X6711 ARM64 AOSP Bootstrap
     runs-on: ubuntu-24.04-arm
+
     steps:
-      - name: Runner Test
+      - name: Checkout AI16ROM
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Runner Validation
         run: |
-          echo "AI16ROM X6711 V3"
+          set -exo pipefail
+          echo "===== ARM64 RUNNER ====="
+          uname -a
           uname -m
           nproc
+          free -h
+          df -h /
+
+          echo "===== JAVA ====="
+          java -version
+
+          echo "===== NINJA ====="
+          ninja --version
+
+          echo "===== GO ====="
+          go version
+
+      - name: Install repo
+        run: |
+          set -exo pipefail
+
+          mkdir -p "$HOME/bin"
+
+          curl -fsSL \
+            https://storage.googleapis.com/git-repo-downloads/repo \
+            -o "$HOME/bin/repo"
+
+          chmod +x "$HOME/bin/repo"
+
+          echo "$HOME/bin" >> "$GITHUB_PATH"
+
+          "$HOME/bin/repo" --version
+
+      - name: Initialize Android 16
+        run: |
+          set -exo pipefail
+
+          mkdir -p "$HOME/aosp"
+          cd "$HOME/aosp"
+
+          repo init \
+            -u https://android.googlesource.com/platform/manifest \
+            -b android16-release \
+            --depth=1 \
+            --partial-clone \
+            --clone-filter=blob:limit=10M \
+            --no-tags
+
+          test -f .repo/manifest.xml
+
+          echo "===== AOSP INIT PASS ====="
+
+      - name: Sync Build Sources
+        run: |
+          set -exo pipefail
+
+          cd "$HOME/aosp"
+
+          repo sync \
+            --current-branch \
+            --no-tags \
+            --optimized-fetch \
+            --prune \
+            -j2 \
+            build/soong \
+            build/make \
+            build/blueprint
+
+          echo "===== SOURCE CHECK ====="
+
+          test -f build/soong/soong_ui.bash
+          test -f build/make/core/main.mk
+          test -f build/blueprint/microfactory/microfactory.bash
+          test -f build/blueprint/microfactory/microfactory.go
+
+          echo "build/soong     : PASS"
+          echo "build/make      : PASS"
+          echo "build/blueprint : PASS"
+
+      - name: Prepare ARM64 Go
+        run: |
+          set -exo pipefail
+
+          cd "$HOME/aosp"
+
+          GO_ROOT="$(go env GOROOT)"
+
+          echo "GOROOT=$GO_ROOT"
+          go version
+          go env GOOS GOARCH
+
+          mkdir -p prebuilts/go
+
+          if [ -e prebuilts/go/linux-arm64 ] && \
+             [ ! -L prebuilts/go/linux-arm64 ]; then
+            rm -rf prebuilts/go/linux-arm64
+          fi
+
+          if [ ! -e prebuilts/go/linux-arm64 ]; then
+            ln -s "$GO_ROOT" prebuilts/go/linux-arm64
+          fi
+
+          test -x \
+            prebuilts/go/linux-arm64/pkg/tool/linux_arm64/compile
+
+          echo "===== ARM64 GO PASS ====="
+
+      - name: Install X6711 Device Tree
+        run: |
+          set -exo pipefail
+
+          cd "$HOME/aosp"
+
+          mkdir -p device/infinix
+          rm -rf device/infinix/X6711
+
+          cp -a \
+            "$GITHUB_WORKSPACE/device/infinix/X6711" \
+            device/infinix/
+
+          test -f device/infinix/X6711/AndroidProducts.mk
+          test -f device/infinix/X6711/BoardConfig.mk
+          test -f device/infinix/X6711/device.mk
+          test -f device/infinix/X6711/aosp_X6711.mk
+
+          echo "===== X6711 DEVICE TREE PASS ====="
+
+      - name: Prepare Android Build Environment
+        run: |
+          set -exo pipefail
+
+          cd "$HOME/aosp"
+
+          export GOROOT="$(go env GOROOT)"
+          export PATH="$GOROOT/bin:$PATH"
+
+          source build/envsetup.sh
+
+          lunch aosp_X6711-bp2a-userdebug
+
+          echo "===== LUNCH PASS ====="
+          echo "TARGET_PRODUCT=$TARGET_PRODUCT"
+          echo "TARGET_DEVICE=$TARGET_DEVICE"
+          echo "TARGET_BUILD_VARIANT=$TARGET_BUILD_VARIANT"
+          echo "OUT_DIR=$OUT_DIR"
+
+          test "$TARGET_PRODUCT" = "aosp_X6711"
+          test "$TARGET_DEVICE" = "X6711"
+
+      - name: Blueprint Microfactory
+        run: |
+          set -exo pipefail
+
+          cd "$HOME/aosp"
+
+          export GOROOT="$(go env GOROOT)"
+          export PATH="$GOROOT/bin:$PATH"
+
+          source build/envsetup.sh
+          lunch aosp_X6711-bp2a-userdebug
+
+          echo "=============================================="
+          echo " BLUEPRINT MICROFACTORY"
+          echo "=============================================="
+
+          BUILDDIR="$OUT_DIR" \
+          SRCDIR="$TOP" \
+          BLUEPRINTDIR="$TOP/build/blueprint" \
+          bash -c '
+            source "$BLUEPRINTDIR/microfactory/microfactory.bash"
+
+            build_go microfactory \
+              github.com/google/blueprint/microfactory/main
+          '
+
+          echo
+          echo "===== MICROFACTORY RESULT ====="
+
+          test -f "$OUT_DIR/microfactory"
+
+          file "$OUT_DIR/microfactory"
+
+          echo "===== MICROFACTORY PASS ====="
+
+      - name: Final Pass
+        if: success()
+        run: |
+          echo "=============================================="
+          echo " AI16ROM X6711 V3 AOSP BOOTSTRAP: PASS"
+          echo "=============================================="
