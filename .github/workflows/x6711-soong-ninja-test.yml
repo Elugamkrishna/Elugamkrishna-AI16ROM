@@ -126,7 +126,7 @@ jobs:
       - name: AI16ROM X6711 - Soong Bootstrap
         shell: bash
         run: |
-          set -euxo pipefail
+          set -eo pipefail
 
           cd "$HOME/aosp"
 
