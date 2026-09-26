@@ -1,0 +1,246 @@
+name: AI16ROM X6711 Build Gate
+
+on:
+  workflow_dispatch:
+
+jobs:
+  x6711-build-gate:
+    name: X6711 ARM64 Build Gate
+    runs-on: ubuntu-24.04-arm
+
+    steps:
+      - name: Checkout AI16ROM
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Runner Check
+        run: |
+          set -exo pipefail
+
+          echo "===== RUNNER ====="
+          uname -a
+          uname -m
+          nproc
+          free -h
+          df -h /
+
+          echo
+          echo "===== JAVA ====="
+          java -version
+
+          echo
+          echo "===== NINJA ====="
+          ninja --version
+
+          echo
+          echo "===== CLANG ====="
+          clang --version
+
+      - name: Install repo
+        run: |
+          set -exo pipefail
+
+          mkdir -p "$HOME/bin"
+
+          curl -fsSL \
+            https://storage.googleapis.com/git-repo-downloads/repo \
+            -o "$HOME/bin/repo"
+
+          chmod +x "$HOME/bin/repo"
+
+          echo "$HOME/bin" >> "$GITHUB_PATH"
+
+          "$HOME/bin/repo" --version
+
+      - name: Initialize Android 16
+        run: |
+          set -exo pipefail
+
+          mkdir -p "$HOME/aosp"
+          cd "$HOME/aosp"
+
+          repo init \
+            -u https://android.googlesource.com/platform/manifest \
+            -b android16-release \
+            --depth=1 \
+            --partial-clone \
+            --clone-filter=blob:limit=10M \
+            --no-tags
+
+          test -f .repo/manifest.xml
+
+          echo
+          echo "===== AOSP INITIALIZED ====="
+          pwd
+
+      - name: Sync Required Build Sources
+        run: |
+          set -exo pipefail
+
+          cd "$HOME/aosp"
+
+          repo sync \
+            --current-branch \
+            --no-tags \
+            --optimized-fetch \
+            --prune \
+            -j2 \
+            build/soong \
+            build/make \
+            build/blueprint
+
+          echo
+          echo "===== REQUIRED SOURCES ====="
+
+          test -f build/soong/soong_ui.bash
+          test -f build/blueprint/microfactory/main/main.go
+          test -f build/make/core/main.mk
+
+          echo "build/soong       : OK"
+          echo "build/blueprint   : OK"
+          echo "build/make        : OK"
+
+      - name: Prepare ARM64 Go
+        run: |
+          set -exo pipefail
+
+          cd "$HOME/aosp"
+
+          GO_ROOT="$(go env GOROOT)"
+
+          echo "===== HOST GO ====="
+          go version
+          echo "GOROOT=$GO_ROOT"
+
+          mkdir -p prebuilts/go
+
+          if [ -e prebuilts/go/linux-arm64 ] && \
+             [ ! -L prebuilts/go/linux-arm64 ]; then
+            rm -rf prebuilts/go/linux-arm64
+          fi
+
+          if [ ! -e prebuilts/go/linux-arm64 ]; then
+            ln -s "$GO_ROOT" prebuilts/go/linux-arm64
+          fi
+
+          export GOROOT="$GO_ROOT"
+          export PATH="$GOROOT/bin:$PATH"
+
+          echo
+          echo "===== AOSP ARM64 GO ====="
+          go version
+          go env GOOS GOARCH GOROOT
+
+          test -x \
+            prebuilts/go/linux-arm64/pkg/tool/linux_arm64/compile
+
+      - name: Install X6711 Device Tree
+        run: |
+          set -exo pipefail
+
+          cd "$HOME/aosp"
+
+          mkdir -p device/infinix
+          rm -rf device/infinix/X6711
+
+          cp -a \
+            "$GITHUB_WORKSPACE/device/infinix/X6711" \
+            device/infinix/
+
+          echo "===== X6711 ====="
+
+          test -f device/infinix/X6711/AndroidProducts.mk
+          test -f device/infinix/X6711/BoardConfig.mk
+          test -f device/infinix/X6711/device.mk
+          test -f device/infinix/X6711/aosp_X6711.mk
+
+          echo "X6711 DEVICE TREE: PASS"
+
+      - name: Check Build Environment
+        run: |
+          set -exo pipefail
+
+          cd "$HOME/aosp"
+
+          export GOROOT="$(go env GOROOT)"
+          export PATH="$GOROOT/bin:$PATH"
+
+          source build/envsetup.sh
+
+          lunch aosp_X6711-bp2a-userdebug
+
+          echo
+          echo "===== LUNCH ====="
+          echo "TARGET_PRODUCT=$TARGET_PRODUCT"
+          echo "TARGET_DEVICE=$TARGET_DEVICE"
+          echo "TARGET_BUILD_VARIANT=$TARGET_BUILD_VARIANT"
+          echo "OUT_DIR=$OUT_DIR"
+
+          test "$TARGET_PRODUCT" = "aosp_X6711"
+
+      - name: Build Blueprint Microfactory
+        run: |
+          set -exo pipefail
+
+          cd "$HOME/aosp"
+
+          export GOROOT="$(go env GOROOT)"
+          export PATH="$GOROOT/bin:$PATH"
+
+          mkdir -p "$OUT_DIR"
+
+          echo
+          echo "=============================================="
+          echo " BLUEPRINT MICROFACTORY"
+          echo "=============================================="
+
+          go build \
+            -x \
+            -trimpath \
+            -o "$OUT_DIR/microfactory-test" \
+            ./build/blueprint/microfactory/main \
+            2>&1 | tee "$GITHUB_WORKSPACE/microfactory.log"
+
+          test -x "$OUT_DIR/microfactory-test"
+
+          echo
+          echo "===== MICROFACTORY PASS ====="
+          file "$OUT_DIR/microfactory-test"
+          ls -lh "$OUT_DIR/microfactory-test"
+
+      - name: Soong Bootstrap
+        run: |
+          set -exo pipefail
+
+          cd "$HOME/aosp"
+
+          export GOROOT="$(go env GOROOT)"
+          export PATH="$GOROOT/bin:$PATH"
+
+          echo
+          echo "=============================================="
+          echo " SOONG BOOTSTRAP"
+          echo "=============================================="
+
+          build/soong/soong_ui.bash \
+            --make-mode \
+            nothing \
+            2>&1 | tee "$GITHUB_WORKSPACE/soong.log"
+
+      - name: Upload Build Logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: x6711-build-gate-logs
+          path: |
+            /home/runner/aosp/microfactory.log
+            /home/runner/aosp/soong.log
+          if-no-files-found: ignore
+
+      - name: Final PASS
+        run: |
+          echo
+          echo "=============================================="
+          echo " AI16ROM X6711 BUILD GATE: PASS"
+          echo "=============================================="
