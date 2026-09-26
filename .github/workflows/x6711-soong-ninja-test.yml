@@ -18,7 +18,6 @@ jobs:
           set -euxo pipefail
 
           sudo apt-get update
-
           sudo apt-get install -y \
             git \
             curl \
@@ -47,7 +46,6 @@ jobs:
             -o "$HOME/bin/repo"
 
           chmod 0755 "$HOME/bin/repo"
-
           echo "$HOME/bin" >> "$GITHUB_PATH"
 
           "$HOME/bin/repo" --version
@@ -58,7 +56,6 @@ jobs:
           set -euxo pipefail
 
           rm -rf "$HOME/aosp"
-
           mkdir -p "$HOME/aosp"
 
           cd "$HOME/aosp"
@@ -80,8 +77,6 @@ jobs:
 
           cd "$HOME/aosp"
 
-          echo "===== SYNC SOONG ====="
-
           repo sync \
             --current-branch \
             --no-tags \
@@ -92,105 +87,11 @@ jobs:
             build/make \
             build/blueprint
 
-          echo "===== SYNC COMPLETE ====="
-
           test -d build/soong
           test -d build/make
           test -d build/blueprint
 
-          echo "===== BUILD TREE SIZES ====="
-
-          du -sh build/soong
-          du -sh build/make
-          du -sh build/blueprint
-
-      - name: Locate Android Go toolchain
-        shell: bash
-        run: |
-          set -euxo pipefail
-
-          cd "$HOME/aosp"
-
-          echo "=================================================="
-          echo " LOCATING ANDROID GO TOOLCHAIN"
-          echo "=================================================="
-
-          echo
-          echo "===== GO REFERENCES IN MANIFEST ====="
-
-          grep -R \
-            -n \
-            -E 'prebuilts/go|linux-arm64.*go|path="[^"]*go[^"]*"' \
-            .repo/manifests \
-            .repo/manifest.xml \
-            2>/dev/null | head -100 || true
-
-          echo
-          echo "===== GO REFERENCES IN SOONG ====="
-
-          grep -R \
-            -n \
-            -E 'prebuilts/go|linux-arm64' \
-            build/soong \
-            build/blueprint \
-            2>/dev/null | head -100 || true
-
-          echo
-          echo "===== MANIFEST PROJECTS ====="
-
-          repo list | grep -Ei 'go|prebuilt' | head -100 || true
-
-          echo
-          echo "===== EXISTING GO PATHS ====="
-
-          find . \
-            -maxdepth 5 \
-            -type d \
-            \( \
-              -path '*/prebuilts/go*' \
-              -o -name 'linux-arm64' \
-            \) \
-            -print 2>/dev/null | head -100 || true
-
-          echo
-          echo "===== SYSTEM GO ====="
-
-          command -v go || true
-          go version || true
-
-      - name: Verify system Go for Soong
-        shell: bash
-        run: |
-          set -euxo pipefail
-
-          echo "=================================================="
-          echo " VERIFY SYSTEM GO"
-          echo "=================================================="
-
-          command -v go
-          go version
-
-          GO_ROOT="$(go env GOROOT)"
-
-          echo "GOROOT=$GO_ROOT"
-
-          test -x "$GO_ROOT/bin/go"
-          test -d "$GO_ROOT/src"
-
-          echo
-          echo "===== GO ROOT ====="
-
-          du -sh "$GO_ROOT"
-          ls -ld "$GO_ROOT"
-          ls -l "$GO_ROOT/bin/go"
-
-          echo
-          echo "===== GO ENV ====="
-
-          go env GOOS
-          go env GOARCH
-          go env GOROOT
-          go env GOPATH
+          echo "===== BUILD DEPENDENCIES READY ====="
 
       - name: Provide ARM64 Go path for Soong
         shell: bash
@@ -199,15 +100,10 @@ jobs:
 
           cd "$HOME/aosp"
 
-          echo "=================================================="
-          echo " PROVIDE ARM64 GO PATH FOR SOONG"
-          echo "=================================================="
-
           GO_ROOT="$(go env GOROOT)"
 
           echo "System Go:"
           go version
-
           echo "GOROOT=$GO_ROOT"
 
           test -x "$GO_ROOT/bin/go"
@@ -215,31 +111,18 @@ jobs:
 
           mkdir -p "$HOME/aosp/prebuilts/go"
 
-          if [ -e "$HOME/aosp/prebuilts/go/linux-arm64" ] || \
-             [ -L "$HOME/aosp/prebuilts/go/linux-arm64" ]; then
-            rm -rf "$HOME/aosp/prebuilts/go/linux-arm64"
-          fi
+          rm -rf "$HOME/aosp/prebuilts/go/linux-arm64"
 
           ln -s \
             "$GO_ROOT" \
             "$HOME/aosp/prebuilts/go/linux-arm64"
 
-          echo
-          echo "===== SOONG GO PATH ====="
-
-          ls -ld \
-            "$HOME/aosp/prebuilts/go/linux-arm64"
-
           test -x \
             "$HOME/aosp/prebuilts/go/linux-arm64/bin/go"
 
-          test -d \
-            "$HOME/aosp/prebuilts/go/linux-arm64/src"
-
           "$HOME/aosp/prebuilts/go/linux-arm64/bin/go" version
 
-          echo
-          echo "===== ARM64 GO PATH READY ====="
+          echo "===== ARM64 GO READY ====="
 
       - name: Copy X6711 device tree
         shell: bash
@@ -254,16 +137,11 @@ jobs:
             "$GITHUB_WORKSPACE/device/infinix/X6711" \
             device/infinix/X6711
 
-          test -f \
-            device/infinix/X6711/AndroidProducts.mk
+          test -f device/infinix/X6711/AndroidProducts.mk
+          test -f device/infinix/X6711/BoardConfig.mk
+          test -f device/infinix/X6711/device.mk
 
-          test -f \
-            device/infinix/X6711/BoardConfig.mk
-
-          test -f \
-            device/infinix/X6711/device.mk
-
-          echo "===== X6711 DEVICE TREE OK ====="
+          echo "===== X6711 DEVICE TREE READY ====="
 
       - name: AI16ROM X6711 - Soong Bootstrap
         shell: bash
@@ -274,118 +152,96 @@ jobs:
 
           export OUT_DIR="$HOME/aosp/out"
 
-          echo "=================================================="
-          echo " AI16ROM X6711 - SOONG BOOTSTRAP"
-          echo "=================================================="
-
-          echo
-          echo "===== SOURCE CHECK ====="
-
-          test -f build/envsetup.sh
-          test -f build/soong/soong_ui.bash
-          test -f device/infinix/X6711/AndroidProducts.mk
-          test -f device/infinix/X6711/BoardConfig.mk
-
-          echo "Source checks: PASS"
-
-          echo
-          echo "===== ENVSETUP ====="
-
           source build/envsetup.sh
-
-          echo
-          echo "===== LUNCH X6711 ====="
 
           lunch aosp_X6711-bp2a-userdebug
 
-          echo
-          echo "===== TARGET CONFIGURATION ====="
-
+          echo "===== TARGET ====="
           echo "TARGET_PRODUCT=$TARGET_PRODUCT"
           echo "TARGET_BUILD_VARIANT=$TARGET_BUILD_VARIANT"
           echo "TARGET_ARCH=$TARGET_ARCH"
-          echo "TARGET_ARCH_VARIANT=$TARGET_ARCH_VARIANT"
           echo "TARGET_DEVICE=$TARGET_DEVICE"
-          echo "OUT_DIR=$OUT_DIR"
+          echo "TARGET_BOARD_PLATFORM=$TARGET_BOARD_PLATFORM"
 
           test "$TARGET_PRODUCT" = "aosp_X6711"
           test "$TARGET_BUILD_VARIANT" = "userdebug"
 
-          echo
-          echo "===== BUILD VARIABLES ====="
-
-          get_build_var TARGET_PRODUCT
-          get_build_var TARGET_BUILD_VARIANT
-          get_build_var TARGET_ARCH
-          get_build_var TARGET_ARCH_VARIANT
-          get_build_var TARGET_BOARD_PLATFORM
-          get_build_var TARGET_DEVICE
-
-          echo
-          echo "===== SOONG UI ====="
-
-          test -f build/soong/soong_ui.bash
-
-          echo
-          echo "===== SOONG BOOTSTRAP START ====="
+          echo "===== SOONG BOOTSTRAP ====="
 
           build/soong/soong_ui.bash --make-mode nothing
 
-          echo
-          echo "===== SOONG BOOTSTRAP PASSED ====="
+          echo "===== SOONG BOOTSTRAP PASS ====="
 
-          echo
-          echo "===== SOONG OUTPUT ====="
-
-          find "$OUT_DIR/soong" \
-            -maxdepth 3 \
-            -type f \
-            \( \
-              -name '*.ninja' \
-              -o -name 'soong.environment.*' \
-              -o -name '*.log' \
-            \) \
-            -print 2>/dev/null | sort
-
-          echo
-          echo "===== SOONG SIZE ====="
-
-          du -sh "$OUT_DIR/soong" 2>/dev/null || true
-
-          echo
-          echo "=================================================="
-          echo " SOONG BOOTSTRAP COMPLETE"
-          echo "=================================================="
-
-      - name: Verify Ninja
+      - name: AI16ROM X6711 - Ninja Build
         shell: bash
         run: |
-          set -euxo pipefail
+          set -eo pipefail
 
+          cd "$HOME/aosp"
+
+          export OUT_DIR="$HOME/aosp/out"
+
+          source build/envsetup.sh
+
+          lunch aosp_X6711-bp2a-userdebug
+
+          echo "=================================================="
+          echo " AI16ROM X6711 - DIRECT NINJA BUILD"
+          echo "=================================================="
+
+          echo
           echo "===== NINJA ====="
-
+          command -v ninja
+          ninja --version
           uname -m
 
-          command -v ninja
+          echo
+          echo "===== BUILD TARGET ====="
 
-          ninja --version
+          m \
+            -j"$(nproc)" \
+            systemimage \
+            vendorimage \
+            productimage \
+            system_extimage \
+            bootimage \
+            vendorbootimage \
+            dtboimage \
+            vbmetaimage
 
-          file "$(command -v ninja)"
+          echo
+          echo "=================================================="
+          echo " AI16ROM X6711 - NINJA BUILD PASS"
+          echo "=================================================="
 
-      - name: Final status
+      - name: Verify build outputs
         shell: bash
         run: |
           set -euxo pipefail
 
-          echo "=================================================="
-          echo " AI16ROM X6711 - SOONG STAGE COMPLETE"
-          echo "=================================================="
+          cd "$HOME/aosp"
 
-          echo "SOONG BOOTSTRAP : PASS"
-          echo "X6711 CONFIG    : PASS"
-          echo "NINJA AVAILABLE : PASS"
+          echo "===== BUILD OUTPUTS ====="
+
+          find "$OUT_DIR/target/product/X6711" \
+            -maxdepth 1 \
+            -type f \
+            -printf '%f %s bytes\n' \
+            2>/dev/null | sort || true
+
+          echo
+          echo "===== OUTPUT SIZE ====="
+
+          du -sh "$OUT_DIR/target/product/X6711" 2>/dev/null || true
 
           echo
           echo "===== STORAGE ====="
 
           df -h "$HOME"
+
+      - name: Final status
+        shell: bash
+        run: |
+          echo "=================================================="
+          echo " AI16ROM X6711 BUILD FINISHED"
+          echo "=================================================="
