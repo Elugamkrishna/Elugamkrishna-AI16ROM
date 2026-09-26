@@ -1,0 +1,1137 @@
+============================================================
+ AI16ROM X6711 — COMPLETE BUILD AUDIT
+============================================================
+DATE: Sat Sep 26 06:29:33 UTC 2026
+SRC: /data/data/com.termux/files/home/AI16ROM/android16
+
+===== HOST =====
+Linux localhost 6.17.0-PRoot-Distro #1 SMP PREEMPT_DYNAMIC Fri, 10 Oct 2025 00:00:00 +0000 aarch64 GNU/Linux
+uid=0(root) gid=0(root) groups=0(root),3003(aid_inet),9997(aid_everybody),20279(aid_u0_a279_cache),50279(aid_all_a279)
+/data/data/com.termux/files/home/AI16ROM/android16
+
+===== MEMORY / STORAGE =====
+               total        used        free      shared  buff/cache   available
+Mem:           7.4Gi       3.8Gi       273Mi        29Mi       3.6Gi       3.6Gi
+Swap:          5.6Gi       2.1Gi       3.4Gi
+Filesystem                        Size  Used Avail Use% Mounted on
+/data/data/com.termux/files/home  227G  209G   19G  92% /data/data/com.termux/files/home
+/data/data/com.termux/files/home  227G  209G   19G  92% /data/data/com.termux/files/home
+
+===== TOOLCHAIN =====
+go:
+go version go1.26.0 linux/arm64
+java:
+openjdk version "17.0.20" 2026-07-21
+OpenJDK Runtime Environment (build 17.0.20+0)
+OpenJDK 64-Bit Server VM (build 17.0.20+0, mixed mode)
+javac:
+javac 17.0.20
+clang:
+clang version 21.1.8
+Target: aarch64-unknown-linux-android24
+Thread model: posix
+ninja:
+1.13.2
+python:
+Python 3.14.6
+
+===== SOURCE TOP LEVEL =====
+drwx------+ 32 root root 3452 Sep 26 06:29 .
+drwx------+      9 root root 3452 Sep 23 14:19 build
+drwx------+     56 root root 3452 Sep 23 08:01 build/soong
+drwx------+     10 root root 3452 Sep 23 09:16 device
+drwx------+      5 root root 3452 Sep 23 08:18 kernel
+drwx------+     17 root root 8192 Sep 26 05:03 out
+drwx------+      3 root root 3452 Sep 24 07:38 vendor
+
+===== REPO =====
+bash: line 49: repo: command not found
+bash: line 50: repo: command not found
+?? .github/
+?? AI16ROM_BUILD_AUDIT_20260926_062933.txt
+?? Android.bp
+?? BUILD
+?? WORKSPACE
+?? art/
+?? bionic/
+?? bootable/
+?? bootstrap.bash
+?? build/
+?? cts/
+?? dalvik/
+?? developers/
+?? development/
+?? device/amlogic/
+?? device/common/
+?? device/generic/
+?? device/google/
+?? device/google_car/
+?? device/linaro/
+?? device/sample/
+?? et
+?? external/
+?? frameworks/
+?? hardware/
+?? kernel/
+?? libcore/
+?? libnativehelper/
+?? lk_inc.mk
+?? packages/
+?? pdk/
+?? platform_testing/
+?? sdk/
+?? system/
+?? test/
+?? toolchain/
+?? tools/
+?? trusty/
+?? vendor/
+
+===== X6711 DEVICE =====
+device/infinix/X6711/AI16ROM_CINEMA_HARDWARE_CONTRACT.md
+device/infinix/X6711/AI16ROM_HARDWARE_CONTRACT.md
+device/infinix/X6711/AndroidProducts.mk
+device/infinix/X6711/BoardConfig.mk
+device/infinix/X6711/BoardConfig.mk.before_boot_final
+device/infinix/X6711/BoardConfig.mk.before_clean_final
+device/infinix/X6711/BoardConfig.mk.before_stock_kernel
+device/infinix/X6711/BoardConfig.mk.successful
+device/infinix/X6711/X6711_CAMERA_CAPABILITIES.txt
+device/infinix/X6711/ai16/AI16ROM_MASTER_FEATURES.conf
+device/infinix/X6711/ai16/AI16ROM_MASTER_FEATURES.conf.before_duplicate_cleanup
+device/infinix/X6711/ai16/AI16_CENTRAL_CORE_POLICY.conf
+device/infinix/X6711/ai16/AI16_CHARACTER_ARCHITECTURE.txt
+device/infinix/X6711/ai16/AI16_SECURITY_ARCHITECTURE.txt
+device/infinix/X6711/ai16/AI16_SYSTEM_POLICY.conf
+device/infinix/X6711/ai16/AI16_TOTAL_RUNTIME_POLICY.conf
+device/infinix/X6711/ai16/AI16_X6711_FEATURE_POLICY.conf
+device/infinix/X6711/ai16/X6711_RUNTIME_CAPABILITIES.conf
+device/infinix/X6711/ai16/cinema/AI16_CINEMA_FEATURES.conf
+device/infinix/X6711/ai16/features.mk
+device/infinix/X6711/ai16/tools/verify_master_features.sh
+device/infinix/X6711/aosp_X6711.mk
+device/infinix/X6711/backups/BoardConfig.mk.ai16-final
+device/infinix/X6711/backups/X6711-vendor.mk.ai16-final
+device/infinix/X6711/backups/device.mk.ai16-final
+device/infinix/X6711/bootanimation/AI16_BOOT_AUDIO_TARGET.txt
+device/infinix/X6711/bootanimation/AI16_BOOT_SEQUENCE.txt
+device/infinix/X6711/bootanimation/AI16_BOOT_TARGET.txt
+device/infinix/X6711/bootanimation/README.txt
+device/infinix/X6711/bootanimation/desc.txt
+device/infinix/X6711/camera/X6711_CAMERA_RUNTIME.txt
+device/infinix/X6711/device.mk
+device/infinix/X6711/ota/AI16OTA_ARCHITECTURE.txt
+device/infinix/X6711/ota/README.md
+device/infinix/X6711/prebuilt/dtb.img
+device/infinix/X6711/prebuilt/dtb/vendor_boot.dtb
+device/infinix/X6711/prebuilt/dtb/x6711.dtb
+device/infinix/X6711/prebuilt/dtbo.img
+device/infinix/X6711/prebuilt/kernel/Image.gz
+device/infinix/X6711/prebuilt/vendor_boot.img
+device/infinix/X6711/proprietary-files.txt
+device/infinix/X6711/rootdir/etc/fstab.mt6833
+device/infinix/X6711/vendor.prop
+device/infinix/X6711/vintf/android.hardware.biometrics.fingerprint@2.1-service.xml
+device/infinix/X6711/vintf/android.hardware.boot@1.2.xml
+device/infinix/X6711/vintf/android.hardware.cas@1.2-service-lazy.xml
+device/infinix/X6711/vintf/android.hardware.health@2.1.xml
+device/infinix/X6711/vintf/android.hardware.neuralnetworks@1.3-service-mtk-gpu.xml
+device/infinix/X6711/vintf/android.hardware.usb@1.2-service-mediatekv2.xml
+device/infinix/X6711/vintf/android.hardware.wifi.hostapd.xml
+device/infinix/X6711/vintf/android.hardware.wifi.supplicant.xml
+device/infinix/X6711/vintf/android.hardware.wifi@1.0-service.xml
+device/infinix/X6711/vintf/compatibility_matrix.xml
+device/infinix/X6711/vintf/gnss-default.xml
+device/infinix/X6711/vintf/gnss@2.1-service.xml
+device/infinix/X6711/vintf/lbs_hidl_service@1.0.xml
+device/infinix/X6711/vintf/lights-mtk-default.xml
+device/infinix/X6711/vintf/manifest.xml
+device/infinix/X6711/vintf/manifest_android.hardware.drm@1.4-service.clearkey.xml
+device/infinix/X6711/vintf/manifest_android.hardware.drm@1.4-service.widevine.xml
+device/infinix/X6711/vintf/manifest_face_default.xml
+device/infinix/X6711/vintf/manifest_hwcomposer.xml
+device/infinix/X6711/vintf/manifest_media_c2_V1_1_default.xml
+device/infinix/X6711/vintf/manifest_storage.xml
+device/infinix/X6711/vintf/manifest_tneengine.xml
+device/infinix/X6711/vintf/memtrack-mediatek.xml
+device/infinix/X6711/vintf/power-default.xml
+device/infinix/X6711/vintf/tranradionet-default.xml
+device/infinix/X6711/vintf/vendor.mediatek.hardware.paytrigger@1.0-service.xml
+device/infinix/X6711/vintf/vendor.mediatek.hardware.tranHwInfo@1.0.xml
+device/infinix/X6711/vintf/vendor.transsion.hardware.security.deviceauthen@2.0.xml
+device/infinix/X6711/vintf/vendor.transsion.hardware.security.hap@1.0.xml
+device/infinix/X6711/vintf/vendor.transsion.hardware.security.trancriticalparavfy@1.0-service.xml
+device/infinix/X6711/vintf/vendor.transsion.hardware.trancam.trancamserver@1.0.xml
+device/infinix/X6711/vintf/vendor.transsion.hardware.tranfacaidl-service.xml
+device/infinix/X6711/vintf/vibrator-mtk-default.xml
+
+===== X6711 BOARD CONFIG =====
+
+----- device/infinix/X6711/BoardConfig.mk -----
+DEVICE_PATH := device/infinix/X6711
+
+# ============================================================
+# ARCHITECTURE
+# ============================================================
+
+TARGET_ARCH := arm64
+TARGET_ARCH_VARIANT := armv8-a
+TARGET_CPU_ABI := arm64-v8a
+TARGET_CPU_VARIANT_RUNTIME := cortex-a55
+
+TARGET_2ND_ARCH := arm
+TARGET_2ND_ARCH_VARIANT := armv7-a-neon
+TARGET_2ND_CPU_ABI := armeabi-v7a
+TARGET_2ND_CPU_VARIANT_RUNTIME := cortex-a55
+
+# ============================================================
+# DEVICE
+# ============================================================
+
+TARGET_BOOTLOADER_BOARD_NAME := X6711
+TARGET_BOARD_PLATFORM := mt6833
+
+TARGET_COPY_OUT_VENDOR := vendor
+TARGET_COPY_OUT_PRODUCT := product
+TARGET_COPY_OUT_SYSTEM_EXT := system_ext
+TARGET_COPY_OUT_SYSTEM_DLKM := system_dlkm
+
+TARGET_OTA_ASSERT_DEVICE := Infinix-X6711
+TARGET_SCREEN_DENSITY := 480
+
+# ============================================================
+# ANDROID BOOT IMAGE
+# ============================================================
+
+BOARD_BOOT_HEADER_VERSION := 4
+BOARD_PAGE_SIZE := 4096
+BOARD_KERNEL_PAGESIZE := 4096
+BOARD_KERNEL_IMAGE_NAME := Image.gz
+
+# ============================================================
+# VENDOR_BOOT / DTB
+# ============================================================
+
+
+BOARD_VENDOR_CMDLINE := bootopt=64S3,32N2,64N2
+
+# ============================================================
+# PARTITIONS
+# ============================================================
+
+BOARD_BOOTIMAGE_PARTITION_SIZE := 67108864
+BOARD_VENDOR_BOOTIMAGE_PARTITION_SIZE := 67108864
+BOARD_FLASH_BLOCK_SIZE := 262144
+
+BOARD_SUPER_PARTITION_SIZE := 9126805504
+BOARD_SUPER_PARTITION_GROUPS := infinix_dynamic_partitions
+
+BOARD_INFINIX_DYNAMIC_PARTITIONS_PARTITION_LIST := \
+    system \
+    system_ext \
+    vendor \
+    product
+
+BOARD_INFINIX_DYNAMIC_PARTITIONS_SIZE := 9122611200
+
+# ============================================================
+# FILE SYSTEMS
+# ============================================================
+
+BOARD_SYSTEMIMAGE_FILE_SYSTEM_TYPE := erofs
+BOARD_SYSTEM_EXTIMAGE_FILE_SYSTEM_TYPE := erofs
+BOARD_PRODUCTIMAGE_FILE_SYSTEM_TYPE := erofs
+BOARD_VENDORIMAGE_FILE_SYSTEM_TYPE := erofs
+BOARD_USERDATAIMAGE_FILE_SYSTEM_TYPE := f2fs
+BOARD_SYSTEM_DLKMIMAGE_FILE_SYSTEM_TYPE := ext4
+
+# ============================================================
+# AVB / METADATA
+# ============================================================
+
+BOARD_AVB_ENABLE := true
+BOARD_USES_METADATA_PARTITION := true
+
+# ============================================================
+# RECOVERY / BOOTLOADER
+# ============================================================
+
+TARGET_NO_RECOVERY := true
+TARGET_NO_BOOTLOADER := true
+
+# ============================================================
+# PREBUILT KERNEL
+# Exact V840 stock kernel
+# ============================================================
+
+TARGET_PREBUILT_KERNEL := \
+    $(DEVICE_PATH)/prebuilt/kernel/Image.gz
+
+# ============================================================
+# PREBUILT DTBO
+# Exact V840 stock DTBO
+# ============================================================
+
+BOARD_PREBUILT_DTBOIMAGE := \
+    $(DEVICE_PATH)/prebuilt/dtbo.img
+
+# ============================================================
+# STOCK VENDOR MODULES
+# ============================================================
+
+BOARD_VENDOR_KERNEL_MODULES := \
+    $(wildcard $(DEVICE_PATH)/prebuilt/modules/vendor/*.ko)
+
+# ============================================================
+# STOCK VENDOR_BOOT RAMDISK MODULES
+# Exact V840 stock count: 205
+# ============================================================
+
+BOARD_VENDOR_RAMDISK_KERNEL_MODULES := \
+    $(wildcard $(DEVICE_PATH)/vendor_ramdisk/lib/modules/*.ko)
+
+BOARD_VENDOR_RAMDISK_KERNEL_MODULES_LOAD := \
+    $(wildcard $(DEVICE_PATH)/vendor_ramdisk/lib/modules/*.ko)
+
+# ============================================================
+# VENDOR_BOOT IMAGE
+# ============================================================
+
+
+# ============================================================
+# STOCK V840 PARTITION PATHS
+# ============================================================
+
+
+BOARD_PREBUILT_VENDOR_BOOTIMAGE := $(DEVICE_PATH)/prebuilt/vendor_boot.img
+
+----- device/infinix/X6711/device.mk -----
+LOCAL_PATH := device/infinix/X6711
+
+PRODUCT_SOONG_NAMESPACES += $(LOCAL_PATH)
+
+PRODUCT_ENFORCE_RRO_TARGETS := *
+
+PRODUCT_VENDOR_PROPERTIES += \
+    ro.product.device=Infinix-X6711 \
+    ro.product.name=X6711-GL \
+    ro.product.model=Infinix X6711 \
+    ro.product.brand=Infinix \
+    ro.product.manufacturer=Infinix \
+    ro.hardware=mt6833
+
+# X6711 prebuilt kernel
+ifeq ($(TARGET_PREBUILT_KERNEL),)
+LOCAL_KERNEL := $(LOCAL_PATH)/prebuilt/kernel/Image.gz
+else
+LOCAL_KERNEL := $(TARGET_PREBUILT_KERNEL)
+endif
+PRODUCT_COPY_FILES += $(LOCAL_KERNEL):kernel
+
+# AI16ROM SYSTEM APPLICATIONS
+PRODUCT_PACKAGES += \
+    AI16Core \
+    AI16Assistant \
+    AI16Camera \
+    AI16Gallery \
+    AI16Studio \
+    AI16Vision \
+    AI16Settings \
+    AI16Recorder
+
+    
+# X6711 A/B OTA
+AB_OTA_UPDATER := true
+AB_OTA_PARTITIONS += \
+    boot \
+    vendor_boot \
+    dtbo \
+    system \
+    system_ext \
+    product \
+    vendor \
+    vbmeta \
+    vbmeta_system \
+    vbmeta_vendor
+
+
+# AI16 COMPLETE FEATURE APP PACK
+PRODUCT_PACKAGES += \
+    AI16Search \
+    AI16Translate \
+    AI16OCR \
+    AI16Documents \
+    AI16Files \
+    AI16Notes \
+    AI16Clipboard \
+    AI16Share \
+    AI16Phone \
+    AI16Contacts \
+    AI16Messages \
+    AI16Calendar \
+    AI16Clock \
+    AI16Weather \
+    AI16Screen \
+    AI16Automation \
+    AI16Memory \
+    AI16Privacy \
+    AI16Security \
+    AI16Vault \
+    AI16Backup \
+    AI16OTA \
+    AI16Themes \
+    AI16Fonts \
+    AI16ControlCenter \
+    AI16LockScreen \
+    AI16Launcher \
+    AI16Wallpaper \
+    AI16AR \
+    AI16Movie \
+    AI16Effects \
+    AI16Animal \
+    AI16Voice \
+    AI16Accessibility \
+    AI16GameSpace \
+    AI16GameShift \
+    AI16SmartManager \
+    AI16XClone \
+    AI16Freezer \
+    AI16LiveActivities \
+    AI16Focus \
+    AI16DynamicUI \
+    AI16GlowSpace \
+    AI16LiquidUI \
+    AI16NaturalDepth \
+    AI16SnapMemo \
+    AI16MindHub \
+    AI16CallAssistant \
+    AI16ScreenSummary \
+    AI16ScreenTags \
+    AI16SmartScreenshot \
+    AI16SmartShare \
+    AI16SmartWiFi \
+    AI16SmartBluetooth \
+    AI16MultiWindow \
+    AI16FloatingWindow \
+    AI16Battery \
+    AI16Charging \
+    AI16Performance \
+    AI16Thermal \
+    AI16Avatar \
+    AI16Character \
+    AI16FaceSwap \
+    AI16SubjectSwap \
+    AI16AnimalSwap \
+    AI16AIPhoto \
+    AI16AIVideo \
+    AI16Cinematic \
+    AI16RealMotion \
+    AI16FastMotion \
+    AI16CameraStudio \
+    AI16PhotoEditor \
+    AI16VideoEditor \
+    AI16LivePhoto \
+    AI16DepthPhoto \
+    AI16SceneAI \
+    AI16AudioAI \
+    AI16VoiceAI \
+    AI16StoryAI \
+    AI16ChoreographyAI \
+    AI16ContinuityAI \
+    AI16AIActions
+
+
+# AI16 ADDITIONAL FEATURE MODULES
+PRODUCT_PACKAGES += \
+    AI16QuickSettings \
+    AI16DeviceCare \
+    AI16SystemManager \
+    AI16Updater \
+    AI16Recovery \
+    AI16BackupRestore \
+    AI16Migration \
+    AI16SetupWizard \
+    AI16CameraPro \
+    AI16PortraitStudio \
+    AI16ImageUpscaler \
+    AI16ImageRestoration \
+    AI16BackgroundStudio \
+    AI16ThemeStore \
+    AI16Icons \
+    AI16AlwaysOnDisplay \
+    AI16CallScreening \
+    AI16CallRecording \
+    AI16VideoCall \
+    AI16CommunicationHub \
+    AI16Writing \
+    AI16NotificationAI \
+    AI16DocumentAI \
+    AI16MeetingAI \
+    AI16Summary \
+    AI16Knowledge \
+    AI16Scanner \
+    AI16Calculator \
+    AI16Music \
+    AI16Player \
+    AI16NearbyShare \
+    AI16PrivacyDashboard \
+    AI16PermissionManager \
+    AI16PrivateSpace \
+    AI16AppLock \
+    AI16SecureFolder \
+    AI16AntiTracking \
+    AI16SecureAI \
+    AI16GameAssistant \
+    AI16GamingVoice \
+    AI16RAMManager \
+    AI16StorageManager \
+    AI16CharacterStudio \
+    AI16AvatarStudio \
+    AI16LalluPattu \
+    AI16AREffects \
+    AI16ARTracking \
+    AI16SpatialPlacement \
+    AI16CameraChoreography \
+    AI16CharacterContinuity \
+    AI16FaceContinuity \
+    AI16CostumeContinuity \
+    AI16LocationContinuity \
+    AI16VFX \
+    AI16SFX \
+    AI16AudioStudio \
+    AI16Connectivity \
+    AI16NFC \
+    AI16SensorHub \
+    AI16DeviceDiagnostics \
+    AI16HardwareInfo \
+    AI16LiveCaption \
+    AI16LiveTranscribe \
+    AI16VoiceAccess \
+    AI16ScreenReader \
+    AI16Magnification \
+    AI16HearingAssistance \
+    AI16BootDiagnostics \
+    AI16OTASystem \
+    AI16ABSlotManager \
+    AI16UpdateRecovery
+
+
+# AI16 FINAL FEATURE EXTENSIONS
+PRODUCT_PACKAGES += \
+    AI16Wellness \
+    AI16DigitalWellbeing \
+    AI16ParentalControls \
+    AI16Emergency \
+    AI16SOS \
+    AI16CarMode \
+    AI16DrivingMode \
+    AI16Bedtime \
+    AI16ModesRoutines \
+    AI16SmartHome \
+    AI16RemoteDevice \
+    AI16DeviceMigration \
+    AI16CrossDevice \
+    AI16CrossClipboard \
+    AI16CrossFileTransfer \
+    AI16CrossCamera \
+    AI16PCLink \
+    AI16TabletLink \
+    AI16MultiDeviceAudio \
+    AI16WirelessDisplay \
+    AI16ScreenCast \
+    AI16OTGManager \
+    AI16SIMManager \
+    AI16NetworkManager \
+    AI165GManager \
+    AI16WiFiDiagnostics \
+    AI16BluetoothDiagnostics \
+    AI16NetworkSpeed \
+    AI16DataUsage \
+    AI16VPN \
+    AI16DNS \
+    AI16APN \
+    AI16StickerMaker \
+    AI16Emoji \
+    AI16PortraitEffects \
+    AI16Beauty \
+    AI16Relight \
+    AI16Colorization \
+    AI16SuperResolution \
+    AI16PhotoCollage \
+    AI16Slideshow \
+    AI16Memories \
+    AI16VideoStabilizer \
+    AI16AudioCleanup \
+    AI16VoiceIsolation \
+    AI16SubtitleEditor \
+    AI16MusicSync \
+    AI16ThumbnailMaker \
+
+----- device/infinix/X6711/AndroidProducts.mk -----
+PRODUCT_MAKEFILES := \
+    $(LOCAL_DIR)/aosp_X6711.mk
+
+COMMON_LUNCH_CHOICES := \
+    aosp_X6711-bp2a-userdebug
+
+----- device/infinix/X6711/AndroidProducts.mk -----
+PRODUCT_MAKEFILES := \
+    $(LOCAL_DIR)/aosp_X6711.mk
+
+COMMON_LUNCH_CHOICES := \
+    aosp_X6711-bp2a-userdebug
+
+----- device/infinix/X6711/BoardConfig.mk -----
+DEVICE_PATH := device/infinix/X6711
+
+# ============================================================
+# ARCHITECTURE
+# ============================================================
+
+TARGET_ARCH := arm64
+TARGET_ARCH_VARIANT := armv8-a
+TARGET_CPU_ABI := arm64-v8a
+TARGET_CPU_VARIANT_RUNTIME := cortex-a55
+
+TARGET_2ND_ARCH := arm
+TARGET_2ND_ARCH_VARIANT := armv7-a-neon
+TARGET_2ND_CPU_ABI := armeabi-v7a
+TARGET_2ND_CPU_VARIANT_RUNTIME := cortex-a55
+
+# ============================================================
+# DEVICE
+# ============================================================
+
+TARGET_BOOTLOADER_BOARD_NAME := X6711
+TARGET_BOARD_PLATFORM := mt6833
+
+TARGET_COPY_OUT_VENDOR := vendor
+TARGET_COPY_OUT_PRODUCT := product
+TARGET_COPY_OUT_SYSTEM_EXT := system_ext
+TARGET_COPY_OUT_SYSTEM_DLKM := system_dlkm
+
+TARGET_OTA_ASSERT_DEVICE := Infinix-X6711
+TARGET_SCREEN_DENSITY := 480
+
+# ============================================================
+# ANDROID BOOT IMAGE
+# ============================================================
+
+BOARD_BOOT_HEADER_VERSION := 4
+BOARD_PAGE_SIZE := 4096
+BOARD_KERNEL_PAGESIZE := 4096
+BOARD_KERNEL_IMAGE_NAME := Image.gz
+
+# ============================================================
+# VENDOR_BOOT / DTB
+# ============================================================
+
+
+BOARD_VENDOR_CMDLINE := bootopt=64S3,32N2,64N2
+
+# ============================================================
+# PARTITIONS
+# ============================================================
+
+BOARD_BOOTIMAGE_PARTITION_SIZE := 67108864
+BOARD_VENDOR_BOOTIMAGE_PARTITION_SIZE := 67108864
+BOARD_FLASH_BLOCK_SIZE := 262144
+
+BOARD_SUPER_PARTITION_SIZE := 9126805504
+BOARD_SUPER_PARTITION_GROUPS := infinix_dynamic_partitions
+
+BOARD_INFINIX_DYNAMIC_PARTITIONS_PARTITION_LIST := \
+    system \
+    system_ext \
+    vendor \
+    product
+
+BOARD_INFINIX_DYNAMIC_PARTITIONS_SIZE := 9122611200
+
+# ============================================================
+# FILE SYSTEMS
+# ============================================================
+
+BOARD_SYSTEMIMAGE_FILE_SYSTEM_TYPE := erofs
+BOARD_SYSTEM_EXTIMAGE_FILE_SYSTEM_TYPE := erofs
+BOARD_PRODUCTIMAGE_FILE_SYSTEM_TYPE := erofs
+BOARD_VENDORIMAGE_FILE_SYSTEM_TYPE := erofs
+BOARD_USERDATAIMAGE_FILE_SYSTEM_TYPE := f2fs
+BOARD_SYSTEM_DLKMIMAGE_FILE_SYSTEM_TYPE := ext4
+
+# ============================================================
+# AVB / METADATA
+# ============================================================
+
+BOARD_AVB_ENABLE := true
+BOARD_USES_METADATA_PARTITION := true
+
+# ============================================================
+# RECOVERY / BOOTLOADER
+# ============================================================
+
+TARGET_NO_RECOVERY := true
+TARGET_NO_BOOTLOADER := true
+
+# ============================================================
+# PREBUILT KERNEL
+# Exact V840 stock kernel
+# ============================================================
+
+TARGET_PREBUILT_KERNEL := \
+    $(DEVICE_PATH)/prebuilt/kernel/Image.gz
+
+# ============================================================
+# PREBUILT DTBO
+# Exact V840 stock DTBO
+# ============================================================
+
+BOARD_PREBUILT_DTBOIMAGE := \
+    $(DEVICE_PATH)/prebuilt/dtbo.img
+
+# ============================================================
+# STOCK VENDOR MODULES
+# ============================================================
+
+BOARD_VENDOR_KERNEL_MODULES := \
+    $(wildcard $(DEVICE_PATH)/prebuilt/modules/vendor/*.ko)
+
+# ============================================================
+# STOCK VENDOR_BOOT RAMDISK MODULES
+# Exact V840 stock count: 205
+# ============================================================
+
+BOARD_VENDOR_RAMDISK_KERNEL_MODULES := \
+    $(wildcard $(DEVICE_PATH)/vendor_ramdisk/lib/modules/*.ko)
+
+BOARD_VENDOR_RAMDISK_KERNEL_MODULES_LOAD := \
+    $(wildcard $(DEVICE_PATH)/vendor_ramdisk/lib/modules/*.ko)
+
+# ============================================================
+# VENDOR_BOOT IMAGE
+# ============================================================
+
+
+# ============================================================
+# STOCK V840 PARTITION PATHS
+# ============================================================
+
+
+BOARD_PREBUILT_VENDOR_BOOTIMAGE := $(DEVICE_PATH)/prebuilt/vendor_boot.img
+
+----- device/infinix/X6711/aosp_X6711.mk -----
+$(call inherit-product, $(SRC_TARGET_DIR)/product/core_64_bit.mk)
+$(call inherit-product, $(SRC_TARGET_DIR)/product/full_base.mk)
+
+$(call inherit-product, device/infinix/X6711/device.mk)
+$(call inherit-product, vendor/infinix/X6711/X6711-vendor.mk)
+
+PRODUCT_NAME := aosp_X6711
+PRODUCT_DEVICE := X6711
+PRODUCT_BRAND := Infinix
+PRODUCT_MODEL := Infinix X6711
+PRODUCT_MANUFACTURER := Infinix
+
+PRODUCT_CHARACTERISTICS := nosdcard
+
+PRODUCT_SHIPPING_API_LEVEL := 30
+
+----- device/infinix/X6711/device.mk -----
+LOCAL_PATH := device/infinix/X6711
+
+PRODUCT_SOONG_NAMESPACES += $(LOCAL_PATH)
+
+PRODUCT_ENFORCE_RRO_TARGETS := *
+
+PRODUCT_VENDOR_PROPERTIES += \
+    ro.product.device=Infinix-X6711 \
+    ro.product.name=X6711-GL \
+    ro.product.model=Infinix X6711 \
+    ro.product.brand=Infinix \
+    ro.product.manufacturer=Infinix \
+    ro.hardware=mt6833
+
+# X6711 prebuilt kernel
+ifeq ($(TARGET_PREBUILT_KERNEL),)
+LOCAL_KERNEL := $(LOCAL_PATH)/prebuilt/kernel/Image.gz
+else
+LOCAL_KERNEL := $(TARGET_PREBUILT_KERNEL)
+endif
+PRODUCT_COPY_FILES += $(LOCAL_KERNEL):kernel
+
+# AI16ROM SYSTEM APPLICATIONS
+PRODUCT_PACKAGES += \
+    AI16Core \
+    AI16Assistant \
+    AI16Camera \
+    AI16Gallery \
+    AI16Studio \
+    AI16Vision \
+    AI16Settings \
+    AI16Recorder
+
+    
+# X6711 A/B OTA
+AB_OTA_UPDATER := true
+AB_OTA_PARTITIONS += \
+    boot \
+    vendor_boot \
+    dtbo \
+    system \
+    system_ext \
+    product \
+    vendor \
+    vbmeta \
+    vbmeta_system \
+    vbmeta_vendor
+
+
+# AI16 COMPLETE FEATURE APP PACK
+PRODUCT_PACKAGES += \
+    AI16Search \
+    AI16Translate \
+    AI16OCR \
+    AI16Documents \
+    AI16Files \
+    AI16Notes \
+    AI16Clipboard \
+    AI16Share \
+    AI16Phone \
+    AI16Contacts \
+    AI16Messages \
+    AI16Calendar \
+    AI16Clock \
+    AI16Weather \
+    AI16Screen \
+    AI16Automation \
+    AI16Memory \
+    AI16Privacy \
+    AI16Security \
+    AI16Vault \
+    AI16Backup \
+    AI16OTA \
+    AI16Themes \
+    AI16Fonts \
+    AI16ControlCenter \
+    AI16LockScreen \
+    AI16Launcher \
+    AI16Wallpaper \
+    AI16AR \
+    AI16Movie \
+    AI16Effects \
+    AI16Animal \
+    AI16Voice \
+    AI16Accessibility \
+    AI16GameSpace \
+    AI16GameShift \
+    AI16SmartManager \
+    AI16XClone \
+    AI16Freezer \
+    AI16LiveActivities \
+    AI16Focus \
+    AI16DynamicUI \
+    AI16GlowSpace \
+    AI16LiquidUI \
+    AI16NaturalDepth \
+    AI16SnapMemo \
+    AI16MindHub \
+    AI16CallAssistant \
+    AI16ScreenSummary \
+    AI16ScreenTags \
+    AI16SmartScreenshot \
+    AI16SmartShare \
+    AI16SmartWiFi \
+    AI16SmartBluetooth \
+    AI16MultiWindow \
+    AI16FloatingWindow \
+    AI16Battery \
+    AI16Charging \
+    AI16Performance \
+    AI16Thermal \
+    AI16Avatar \
+    AI16Character \
+    AI16FaceSwap \
+    AI16SubjectSwap \
+    AI16AnimalSwap \
+    AI16AIPhoto \
+    AI16AIVideo \
+    AI16Cinematic \
+    AI16RealMotion \
+    AI16FastMotion \
+    AI16CameraStudio \
+    AI16PhotoEditor \
+    AI16VideoEditor \
+    AI16LivePhoto \
+    AI16DepthPhoto \
+    AI16SceneAI \
+    AI16AudioAI \
+    AI16VoiceAI \
+    AI16StoryAI \
+    AI16ChoreographyAI \
+    AI16ContinuityAI \
+    AI16AIActions
+
+
+# AI16 ADDITIONAL FEATURE MODULES
+PRODUCT_PACKAGES += \
+    AI16QuickSettings \
+    AI16DeviceCare \
+    AI16SystemManager \
+    AI16Updater \
+    AI16Recovery \
+    AI16BackupRestore \
+    AI16Migration \
+    AI16SetupWizard \
+    AI16CameraPro \
+    AI16PortraitStudio \
+    AI16ImageUpscaler \
+    AI16ImageRestoration \
+    AI16BackgroundStudio \
+    AI16ThemeStore \
+    AI16Icons \
+    AI16AlwaysOnDisplay \
+    AI16CallScreening \
+    AI16CallRecording \
+    AI16VideoCall \
+    AI16CommunicationHub \
+    AI16Writing \
+    AI16NotificationAI \
+    AI16DocumentAI \
+    AI16MeetingAI \
+    AI16Summary \
+    AI16Knowledge \
+    AI16Scanner \
+    AI16Calculator \
+    AI16Music \
+    AI16Player \
+    AI16NearbyShare \
+    AI16PrivacyDashboard \
+    AI16PermissionManager \
+    AI16PrivateSpace \
+    AI16AppLock \
+    AI16SecureFolder \
+    AI16AntiTracking \
+    AI16SecureAI \
+    AI16GameAssistant \
+    AI16GamingVoice \
+    AI16RAMManager \
+    AI16StorageManager \
+    AI16CharacterStudio \
+    AI16AvatarStudio \
+    AI16LalluPattu \
+    AI16AREffects \
+    AI16ARTracking \
+    AI16SpatialPlacement \
+    AI16CameraChoreography \
+    AI16CharacterContinuity \
+    AI16FaceContinuity \
+    AI16CostumeContinuity \
+    AI16LocationContinuity \
+    AI16VFX \
+    AI16SFX \
+    AI16AudioStudio \
+    AI16Connectivity \
+    AI16NFC \
+    AI16SensorHub \
+    AI16DeviceDiagnostics \
+    AI16HardwareInfo \
+    AI16LiveCaption \
+    AI16LiveTranscribe \
+    AI16VoiceAccess \
+    AI16ScreenReader \
+    AI16Magnification \
+    AI16HearingAssistance \
+    AI16BootDiagnostics \
+    AI16OTASystem \
+    AI16ABSlotManager \
+    AI16UpdateRecovery
+
+
+# AI16 FINAL FEATURE EXTENSIONS
+PRODUCT_PACKAGES += \
+    AI16Wellness \
+    AI16DigitalWellbeing \
+    AI16ParentalControls \
+    AI16Emergency \
+    AI16SOS \
+    AI16CarMode \
+    AI16DrivingMode \
+    AI16Bedtime \
+    AI16ModesRoutines \
+    AI16SmartHome \
+    AI16RemoteDevice \
+    AI16DeviceMigration \
+    AI16CrossDevice \
+    AI16CrossClipboard \
+    AI16CrossFileTransfer \
+    AI16CrossCamera \
+    AI16PCLink \
+    AI16TabletLink \
+    AI16MultiDeviceAudio \
+    AI16WirelessDisplay \
+    AI16ScreenCast \
+    AI16OTGManager \
+    AI16SIMManager \
+    AI16NetworkManager \
+    AI165GManager \
+    AI16WiFiDiagnostics \
+    AI16BluetoothDiagnostics \
+    AI16NetworkSpeed \
+    AI16DataUsage \
+    AI16VPN \
+    AI16DNS \
+    AI16APN \
+    AI16StickerMaker \
+    AI16Emoji \
+    AI16PortraitEffects \
+    AI16Beauty \
+    AI16Relight \
+    AI16Colorization \
+    AI16SuperResolution \
+    AI16PhotoCollage \
+    AI16Slideshow \
+    AI16Memories \
+    AI16VideoStabilizer \
+    AI16AudioCleanup \
+    AI16VoiceIsolation \
+    AI16SubtitleEditor \
+    AI16MusicSync \
+    AI16ThumbnailMaker \
+
+===== AI16 FILES =====
+device/infinix/X6711/AI16ROM_CINEMA_HARDWARE_CONTRACT.md
+device/infinix/X6711/AI16ROM_HARDWARE_CONTRACT.md
+device/infinix/X6711/ai16/AI16ROM_MASTER_FEATURES.conf
+device/infinix/X6711/ai16/AI16ROM_MASTER_FEATURES.conf.before_duplicate_cleanup
+device/infinix/X6711/ai16/AI16_CENTRAL_CORE_POLICY.conf
+device/infinix/X6711/ai16/AI16_CHARACTER_ARCHITECTURE.txt
+device/infinix/X6711/ai16/AI16_SECURITY_ARCHITECTURE.txt
+device/infinix/X6711/ai16/AI16_SYSTEM_POLICY.conf
+device/infinix/X6711/ai16/AI16_TOTAL_RUNTIME_POLICY.conf
+device/infinix/X6711/ai16/AI16_X6711_FEATURE_POLICY.conf
+device/infinix/X6711/ai16/cinema/AI16_CINEMA_FEATURES.conf
+device/infinix/X6711/backups/BoardConfig.mk.ai16-final
+device/infinix/X6711/backups/X6711-vendor.mk.ai16-final
+device/infinix/X6711/backups/device.mk.ai16-final
+device/infinix/X6711/bootanimation/AI16_BOOT_AUDIO_TARGET.txt
+device/infinix/X6711/bootanimation/AI16_BOOT_SEQUENCE.txt
+device/infinix/X6711/bootanimation/AI16_BOOT_TARGET.txt
+device/infinix/X6711/ota/AI16OTA_ARCHITECTURE.txt
+packages/SystemUI/src/com/android/systemui/ai16/AI16ActivityPresentation.java
+packages/SystemUI/src/com/android/systemui/ai16/AI16ActivityPresentationController.java
+packages/SystemUI/src/com/android/systemui/ai16/AI16ActivityViewModel.java
+packages/SystemUI/src/com/android/systemui/ai16/AI16SystemUIActivityController.java
+packages/SystemUI/src/com/android/systemui/ai16/AI16SystemUIState.java
+packages/SystemUI/src/com/android/systemui/ai16/host/AI16ActivityHost.java
+packages/SystemUI/src/com/android/systemui/ai16/view/AI16CompactActivityView.java
+packages/SystemUI/src/com/android/systemui/ai16/view/AI16ExpandedActivityView.java
+packages/apps/AI16Assistant/src/main/java/com.ai16rom.AI16Assistant/core/AI16AppStatus.java
+packages/apps/AI16Assistant/src/main/java/com/ai16rom/AI16Assistant/assistant/AI16AssistantController.java
+packages/apps/AI16Assistant/src/main/java/com/ai16rom/AI16Assistant/assistant/AI16AssistantService.java
+packages/apps/AI16Assistant/src/main/java/com/ai16rom/AI16Assistant/core/AI16AppBridge.java
+packages/apps/AI16Assistant/src/main/java/com/ai16rom/AI16Assistant/voice/AI16VoiceService.java
+packages/apps/AI16CallerAnalysis/src/main/java/com/ai16rom/ai16calleranalysis/AI16CallerAnalysisEngine.java
+packages/apps/AI16Camera/src/main/java/com.ai16rom.AI16Camera/core/AI16AppStatus.java
+packages/apps/AI16Camera/src/main/java/com/ai16rom/AI16Camera/camera/AI16CameraService.java
+packages/apps/AI16Camera/src/main/java/com/ai16rom/AI16Camera/capability/AI16CameraCapabilities.java
+packages/apps/AI16Camera/src/main/java/com/ai16rom/AI16Camera/controller/AI16CameraController.java
+packages/apps/AI16Camera/src/main/java/com/ai16rom/AI16Camera/core/AI16AppBridge.java
+packages/apps/AI16Camera/src/main/java/com/ai16rom/AI16Camera/vision/AI16CameraVisionBridge.java
+packages/apps/AI16Core/src/com/ai16/core/AI16Service.java
+packages/apps/AI16Core/src/main/java/com/ai16rom/AI16Core/app/AI16AppController.java
+packages/apps/AI16Core/src/main/java/com/ai16rom/AI16Core/app/AI16AppRegistry.java
+packages/apps/AI16Core/src/main/java/com/ai16rom/AI16Core/assistant/AI16AssistantEngine.java
+packages/apps/AI16Core/src/main/java/com/ai16rom/AI16Core/assistant/AI16AssistantRequest.java
+packages/apps/AI16Core/src/main/java/com/ai16rom/AI16Core/assistant/AI16AssistantResponse.java
+packages/apps/AI16Core/src/main/java/com/ai16rom/AI16Core/automation/AI16AutomationEngine.java
+packages/apps/AI16Core/src/main/java/com/ai16rom/AI16Core/camera/AI16CameraCapability.java
+packages/apps/AI16Core/src/main/java/com/ai16rom/AI16Core/camera/AI16CameraCapabilityProvider.java
+packages/apps/AI16Core/src/main/java/com/ai16rom/AI16Core/camera/AI16CameraFrameRequest.java
+packages/apps/AI16Core/src/main/java/com/ai16rom/AI16Core/clipboard/AI16ClipboardEngine.java
+packages/apps/AI16Core/src/main/java/com/ai16rom/AI16Core/core/AI16Action.java
+packages/apps/AI16Core/src/main/java/com/ai16rom/AI16Core/core/AI16AppComponentMap.java
+packages/apps/AI16Core/src/main/java/com/ai16rom/AI16Core/core/AI16AppRuntimeBridge.java
+packages/apps/AI16Core/src/main/java/com/ai16rom/AI16Core/core/AI16Capability.java
+packages/apps/AI16Core/src/main/java/com/ai16rom/AI16Core/core/AI16CoreManager.java
+packages/apps/AI16Core/src/main/java/com/ai16rom/AI16Core/core/AI16RuntimeBridge.java
+packages/apps/AI16Core/src/main/java/com/ai16rom/AI16Core/core/AI16Service.java
+packages/apps/AI16Core/src/main/java/com/ai16rom/AI16Core/core/AI16ServiceRegistry.java
+packages/apps/AI16Core/src/main/java/com/ai16rom/AI16Core/core/AI16SystemBridge.java
+packages/apps/AI16Core/src/main/java/com/ai16rom/AI16Core/document/AI16DocumentEngine.java
+packages/apps/AI16Core/src/main/java/com/ai16rom/AI16Core/features/AI16Feature.java
+packages/apps/AI16Core/src/main/java/com/ai16rom/AI16Core/features/AI16FeatureRegistry.java
+packages/apps/AI16Core/src/main/java/com/ai16rom/AI16Core/memory/AI16MemoryEngine.java
+packages/apps/AI16Core/src/main/java/com/ai16rom/AI16Core/memory/AI16MemoryStore.java
+packages/apps/AI16Core/src/main/java/com/ai16rom/AI16Core/notification/AI16NotificationEngine.java
+packages/apps/AI16Core/src/main/java/com/ai16rom/AI16Core/privacy/AI16PrivacyEngine.java
+packages/apps/AI16Core/src/main/java/com/ai16rom/AI16Core/runtime/AI16AppStatusSnapshot.java
+packages/apps/AI16Core/src/main/java/com/ai16rom/AI16Core/runtime/AI16CapabilityReport.java
+packages/apps/AI16Core/src/main/java/com/ai16rom/AI16Core/runtime/AI16CoreRuntime.java
+packages/apps/AI16Core/src/main/java/com/ai16rom/AI16Core/runtime/AI16CoreStatus.java
+packages/apps/AI16Core/src/main/java/com/ai16rom/AI16Core/runtime/AI16RuntimeInfo.java
+packages/apps/AI16Core/src/main/java/com/ai16rom/AI16Core/screen/AI16ScreenEngine.java
+packages/apps/AI16Core/src/main/java/com/ai16rom/AI16Core/search/AI16SearchEngine.java
+packages/apps/AI16Core/src/main/java/com/ai16rom/AI16Core/search/AI16SearchRequest.java
+packages/apps/AI16Core/src/main/java/com/ai16rom/AI16Core/search/AI16SearchResult.java
+packages/apps/AI16Core/src/main/java/com/ai16rom/AI16Core/services/AI16ServiceBootstrap.java
+packages/apps/AI16Core/src/main/java/com/ai16rom/AI16Core/services/BasicAI16Service.java
+packages/apps/AI16Core/src/main/java/com/ai16rom/AI16Core/system/AI16SystemAction.java
+packages/apps/AI16Core/src/main/java/com/ai16rom/AI16Core/system/AI16SystemActionEngine.java
+packages/apps/AI16Core/src/main/java/com/ai16rom/AI16Core/systemui/AI16ActivityController.java
+packages/apps/AI16Core/src/main/java/com/ai16rom/AI16Core/translation/AI16TranslationEngine.java
+packages/apps/AI16Core/src/main/java/com/ai16rom/AI16Core/vision/AI16VisionEngine.java
+packages/apps/AI16Core/src/main/java/com/ai16rom/AI16Core/vision/AI16VisionRequest.java
+packages/apps/AI16Core/src/main/java/com/ai16rom/AI16Core/vision/AI16VisionResult.java
+packages/apps/AI16Core/src/main/java/com/ai16rom/AI16Core/vision/frame/AI16VisionFrame.java
+packages/apps/AI16Core/src/main/java/com/ai16rom/AI16Core/vision/frame/AI16VisionProcessor.java
+packages/apps/AI16Core/src/main/java/com/ai16rom/AI16Core/voice/AI16VoiceEngine.java
+packages/apps/AI16Core/src/main/java/com/ai16rom/AI16Core/voice/AI16VoiceRequest.java
+packages/apps/AI16Core/src/main/java/com/ai16rom/AI16Core/writing/AI16WritingEngine.java
+packages/apps/AI16Gallery/src/main/java/com.ai16rom.AI16Gallery/core/AI16AppStatus.java
+packages/apps/AI16Gallery/src/main/java/com/ai16rom/AI16Gallery/controller/AI16GalleryController.java
+packages/apps/AI16Gallery/src/main/java/com/ai16rom/AI16Gallery/core/AI16AppBridge.java
+packages/apps/AI16Gallery/src/main/java/com/ai16rom/AI16Gallery/gallery/AI16GalleryService.java
+packages/apps/AI16Gallery/src/main/java/com/ai16rom/AI16Gallery/search/AI16GallerySearchBridge.java
+packages/apps/AI16Phone/src/main/java/com/ai16rom/ai16phone/caller/AI16CallerEngine.java
+packages/apps/AI16Phone/src/main/java/com/ai16rom/ai16phone/caller/AI16CallerOverlay.java
+packages/apps/AI16Phone/src/main/java/com/ai16rom/ai16phone/recording/AI16CallRecordingCapability.java
+packages/apps/AI16Phone/src/main/java/com/ai16rom/ai16phone/recording/AI16CallRecordingService.java
+packages/apps/AI16Phone/src/main/java/com/ai16rom/ai16phone/recording/AI16RecordingController.java
+packages/apps/AI16Phone/src/main/java/com/ai16rom/ai16phone/telecom/AI16InCallService.java
+packages/apps/AI16PhoneCommon/src/main/java/com/ai16rom/ai16phone/common/AI16CallAssistantEngine.java
+packages/apps/AI16Recorder/src/main/java/com.ai16rom.AI16Recorder/core/AI16AppStatus.java
+packages/apps/AI16Recorder/src/main/java/com/ai16rom/AI16Recorder/ai/AI16RecorderAIController.java
+packages/apps/AI16Recorder/src/main/java/com/ai16rom/AI16Recorder/controller/AI16RecorderController.java
+packages/apps/AI16Recorder/src/main/java/com/ai16rom/AI16Recorder/core/AI16AppBridge.java
+packages/apps/AI16Recorder/src/main/java/com/ai16rom/AI16Recorder/recorder/AI16RecorderService.java
+packages/apps/AI16Settings/src/main/java/com.ai16rom.AI16Settings/core/AI16AppStatus.java
+packages/apps/AI16Settings/src/main/java/com/ai16rom/AI16Settings/controller/AI16SettingsController.java
+packages/apps/AI16Settings/src/main/java/com/ai16rom/AI16Settings/core/AI16AppBridge.java
+packages/apps/AI16Settings/src/main/java/com/ai16rom/AI16Settings/privacy/AI16PrivacyController.java
+packages/apps/AI16Settings/src/main/java/com/ai16rom/AI16Settings/settings/AI16SettingsService.java
+packages/apps/AI16Studio/src/main/java/com.ai16rom.AI16Studio/core/AI16AppStatus.java
+packages/apps/AI16Studio/src/main/java/com/ai16rom/AI16Studio/controller/AI16StudioController.java
+packages/apps/AI16Studio/src/main/java/com/ai16rom/AI16Studio/core/AI16AppBridge.java
+packages/apps/AI16Studio/src/main/java/com/ai16rom/AI16Studio/pipeline/AI16StudioPipeline.java
+packages/apps/AI16Studio/src/main/java/com/ai16rom/AI16Studio/studio/AI16StudioService.java
+packages/apps/AI16Vision/src/main/java/com.ai16rom.AI16Vision/core/AI16AppStatus.java
+packages/apps/AI16Vision/src/main/java/com/ai16rom/AI16Vision/controller/AI16VisionController.java
+packages/apps/AI16Vision/src/main/java/com/ai16rom/AI16Vision/core/AI16AppBridge.java
+packages/apps/AI16Vision/src/main/java/com/ai16rom/AI16Vision/engine/AI16VisionFeatureSet.java
+packages/apps/AI16Vision/src/main/java/com/ai16rom/AI16Vision/pipeline/AI16VisionPipeline.java
+packages/apps/AI16Vision/src/main/java/com/ai16rom/AI16Vision/vision/AI16VisionService.java
+packages/apps/DeskClock/res/animator-v22/ic_timer_animation_hourglass_fill.xml
+packages/apps/DeskClock/res/animator-v22/ic_timer_animation_hourglass_frame.xml
+packages/apps/DocumentsUI/res/flag(!com.android.documentsui.flags.use_material3)/drawable/hourglass.xml
+packages/apps/DocumentsUI/res/flag(com.android.documentsui.flags.use_material3)/drawable/hourglass.xml
+packages/apps/Launcher3/quickstep/res/drawable/ic_hourglass_top.xml
+packages/apps/QuickSearchBox/res/drawable-hdpi/magnifying_glass.png
+packages/apps/QuickSearchBox/res/drawable-mdpi/magnifying_glass.png
+packages/apps/Settings/res/drawable/ic_face_enroll_introduction_glasses.xml
+packages/modules/Permission/PermissionController/role-controller/java/com/android/role/controller/behavior/v34/CompanionDeviceGlassesRoleBehavior.java
+packages/services/Car/cpp/evs/manager/aidl/wrappers/include/AidlCamera.h
+packages/services/Car/cpp/evs/manager/aidl/wrappers/include/AidlCameraStream.h
+packages/services/Car/cpp/evs/manager/aidl/wrappers/src/AidlCamera.cpp
+packages/services/Car/cpp/evs/manager/aidl/wrappers/src/AidlCameraStream.cpp
+
+===== SOONG FILE COUNTS =====
