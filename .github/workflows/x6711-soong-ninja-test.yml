@@ -1,3 +1,78 @@
+name: AI16ROM X6711 Soong Bootstrap
+
+on:
+  workflow_dispatch:
+
+jobs:
+  soong-bootstrap:
+    runs-on: ubuntu-24.04-arm
+
+    steps:
+
+      - name: Checkout AI16ROM
+        uses: actions/checkout@v4
+
+      - name: Prepare runner
+        shell: bash
+        run: |
+          set -euxo pipefail
+
+          sudo apt-get update
+
+          sudo apt-get install -y \
+            git \
+            curl \
+            python3 \
+            ninja-build \
+            bc \
+            bison \
+            flex \
+            build-essential
+
+          echo "===== RUNNER ====="
+          uname -m
+          nproc
+          free -h
+          df -h /
+
+      - name: Install repo
+        shell: bash
+        run: |
+          set -euxo pipefail
+
+          mkdir -p "$HOME/bin"
+
+          curl -fsSL \
+            https://storage.googleapis.com/git-repo-downloads/repo \
+            -o "$HOME/bin/repo"
+
+          chmod 0755 "$HOME/bin/repo"
+
+          echo "$HOME/bin" >> "$GITHUB_PATH"
+
+          "$HOME/bin/repo" --version
+
+      - name: Initialize Android 16
+        shell: bash
+        run: |
+          set -euxo pipefail
+
+          rm -rf "$HOME/aosp"
+
+          mkdir -p "$HOME/aosp"
+
+          cd "$HOME/aosp"
+
+          repo init \
+            -u https://android.googlesource.com/platform/manifest \
+            -b android16-release \
+            --depth=1 \
+            --no-tags
+
+          test -f .repo/manifest.xml
+
+          echo "===== AOSP INIT OK ====="
+
       - name: Sync required build dependencies
         shell: bash
         run: |
@@ -23,13 +98,152 @@
           test -d build/make
           test -d build/blueprint
 
-          echo "===== SIZES ====="
+          echo "===== BUILD TREE SIZES ====="
+
           du -sh build/soong
           du -sh build/make
           du -sh build/blueprint
 
-          echo "===== FIND GO PROJECTS IN MANIFEST ====="
-          grep -R "path=\".*go" .repo/manifests .repo/manifest.xml 2>/dev/null | head -50 || true
+      - name: Copy X6711 device tree
+        shell: bash
+        run: |
+          set -euxo pipefail
 
-          echo "===== FIND GO TOOLCHAIN REFERENCES ====="
-          grep -R "prebuilts/go" build/soong build/blueprint 2>/dev/null | head -50 || true
+          cd "$HOME/aosp"
+
+          mkdir -p device/infinix
+
+          cp -a \
+            "$GITHUB_WORKSPACE/device/infinix/X6711" \
+            device/infinix/X6711
+
+          test -f device/infinix/X6711/AndroidProducts.mk
+          test -f device/infinix/X6711/BoardConfig.mk
+          test -f device/infinix/X6711/device.mk
+
+          echo "===== X6711 DEVICE TREE OK ====="
+
+      - name: AI16ROM X6711 - Soong Bootstrap
+        shell: bash
+        run: |
+          set -euxo pipefail
+
+          cd "$HOME/aosp"
+
+          export OUT_DIR="$HOME/aosp/out"
+
+          echo "=================================================="
+          echo " AI16ROM X6711 - SOONG BOOTSTRAP"
+          echo "=================================================="
+
+          echo
+          echo "===== SOURCE CHECK ====="
+
+          test -f build/envsetup.sh
+          test -f build/soong/soong_ui.bash
+          test -f device/infinix/X6711/AndroidProducts.mk
+          test -f device/infinix/X6711/BoardConfig.mk
+
+          echo "Source checks: PASS"
+
+          echo
+          echo "===== ENVSETUP ====="
+
+          source build/envsetup.sh
+
+          echo
+          echo "===== LUNCH X6711 ====="
+
+          lunch aosp_X6711-bp2a-userdebug
+
+          echo
+          echo "===== TARGET CONFIGURATION ====="
+
+          echo "TARGET_PRODUCT=$TARGET_PRODUCT"
+          echo "TARGET_BUILD_VARIANT=$TARGET_BUILD_VARIANT"
+          echo "TARGET_ARCH=$TARGET_ARCH"
+          echo "TARGET_ARCH_VARIANT=$TARGET_ARCH_VARIANT"
+          echo "TARGET_DEVICE=$TARGET_DEVICE"
+          echo "OUT_DIR=$OUT_DIR"
+
+          test "$TARGET_PRODUCT" = "aosp_X6711"
+          test "$TARGET_BUILD_VARIANT" = "userdebug"
+
+          echo
+          echo "===== BUILD VARIABLES ====="
+
+          get_build_var TARGET_PRODUCT
+          get_build_var TARGET_BUILD_VARIANT
+          get_build_var TARGET_ARCH
+          get_build_var TARGET_ARCH_VARIANT
+          get_build_var TARGET_BOARD_PLATFORM
+          get_build_var TARGET_DEVICE
+
+          echo
+          echo "===== SOONG UI ====="
+
+          test -f build/soong/soong_ui.bash
+
+          echo
+          echo "===== SOONG BOOTSTRAP START ====="
+
+          build/soong/soong_ui.bash --make-mode nothing
+
+          echo
+          echo "===== SOONG BOOTSTRAP PASSED ====="
+
+          echo
+          echo "===== SOONG OUTPUT ====="
+
+          find "$OUT_DIR/soong" \
+            -maxdepth 3 \
+            -type f \
+            \( \
+              -name '*.ninja' \
+              -o -name 'soong.environment.*' \
+              -o -name '*.log' \
+            \) \
+            -print 2>/dev/null | sort
+
+          echo
+          echo "===== SOONG SIZE ====="
+
+          du -sh "$OUT_DIR/soong" 2>/dev/null || true
+
+          echo
+          echo "=================================================="
+          echo " SOONG BOOTSTRAP COMPLETE"
+          echo "=================================================="
+
+      - name: Verify Ninja
+        shell: bash
+        run: |
+          set -euxo pipefail
+
+          echo "===== NINJA ====="
+
+          uname -m
+
+          command -v ninja
+
+          ninja --version
+
+          file "$(command -v ninja)"
+
+      - name: Final status
+        shell: bash
+        run: |
+          set -euxo pipefail
+
+          echo "=================================================="
+          echo " AI16ROM X6711 - SOONG STAGE COMPLETE"
+          echo "=================================================="
+
+          echo "SOONG BOOTSTRAP : PASS"
+          echo "X6711 CONFIG    : PASS"
+          echo "NINJA AVAILABLE : PASS"
+
+          echo
+          echo "===== STORAGE ====="
+
+          df -h "$HOME"
