@@ -1,0 +1,128 @@
+name: AI16ROM AOSP Sync Test
+
+on:
+  workflow_dispatch:
+
+jobs:
+  sync-test:
+    runs-on: ubuntu-24.04-arm
+
+    steps:
+      - name: Checkout AI16ROM
+        uses: actions/checkout@v4
+
+      - name: Prepare tools
+        shell: bash
+        run: |
+          set -e
+
+          sudo apt-get update
+          sudo apt-get install -y git curl python3
+
+          echo "===== RUNNER ====="
+          uname -a
+          uname -m
+          nproc
+
+          echo
+          echo "===== MEMORY ====="
+          free -h
+
+          echo
+          echo "===== STORAGE BEFORE ====="
+          df -h /
+
+      - name: Install repo tool
+        shell: bash
+        run: |
+          set -e
+
+          mkdir -p "$HOME/bin"
+
+          curl -L https://storage.googleapis.com/git-repo-downloads/repo \
+            -o "$HOME/bin/repo"
+
+          chmod a+x "$HOME/bin/repo"
+
+          export PATH="$HOME/bin:$PATH"
+          echo "$HOME/bin" >> "$GITHUB_PATH"
+
+          repo --version
+
+      - name: Initialize Android 16 AOSP
+        shell: bash
+        run: |
+          set -e
+
+          rm -rf "$HOME/aosp"
+          mkdir -p "$HOME/aosp"
+          cd "$HOME/aosp"
+
+          repo init \
+            -u https://android.googlesource.com/platform/manifest \
+            -b android16-release \
+            --depth=1 \
+            --partial-clone \
+            --clone-filter=blob:limit=10M \
+            --no-tags
+
+          test -d .repo
+
+          echo
+          echo "===== MANIFEST READY ====="
+          du -sh .repo
+          df -h "$HOME"
+
+      - name: Controlled AOSP source sync
+        shell: bash
+        run: |
+          set -e
+
+          cd "$HOME/aosp"
+
+          echo "===== SYNC TARGETS ====="
+          echo "build/soong"
+          echo "build/make"
+
+          repo sync \
+            --current-branch \
+            --no-tags \
+            --optimized-fetch \
+            --prune \
+            --partial-clone \
+            --clone-filter=blob:limit=10M \
+            -j2 \
+            build/soong \
+            build/make
+
+          echo
+          echo "===== SYNC RESULT ====="
+          test -d build/soong
+          test -d build/make
+
+          echo "build/soong: PRESENT"
+          echo "build/make: PRESENT"
+
+      - name: Source and storage verification
+        shell: bash
+        run: |
+          set -e
+
+          cd "$HOME/aosp"
+
+          echo "===== SOURCE ====="
+          du -sh build/soong
+          du -sh build/make
+
+          echo
+          echo "===== GIT ====="
+          git --version
+
+          echo
+          echo "===== STORAGE AFTER SYNC ====="
+          df -h "$HOME"
+
+          echo
+          echo "===== RESULT ====="
+          echo "Controlled AOSP source sync succeeded."
+          echo "Full AOSP source sync is NOT performed in this stage."
