@@ -205,18 +205,13 @@ jobs:
 
           GO_ROOT="$(go env GOROOT)"
 
-          echo
-          echo "===== SYSTEM GO ====="
-
+          echo "System Go:"
           go version
+
           echo "GOROOT=$GO_ROOT"
 
-          test -d "$GO_ROOT"
           test -x "$GO_ROOT/bin/go"
           test -d "$GO_ROOT/src"
-
-          echo
-          echo "===== CREATE SOONG GO PATH ====="
 
           mkdir -p "$HOME/aosp/prebuilts/go"
 
@@ -225,13 +220,15 @@ jobs:
             rm -rf "$HOME/aosp/prebuilts/go/linux-arm64"
           fi
 
-          ln -s "$GO_ROOT" \
+          ln -s \
+            "$GO_ROOT" \
             "$HOME/aosp/prebuilts/go/linux-arm64"
 
           echo
           echo "===== SOONG GO PATH ====="
 
-          ls -ld "$HOME/aosp/prebuilts/go/linux-arm64"
+          ls -ld \
+            "$HOME/aosp/prebuilts/go/linux-arm64"
 
           test -x \
             "$HOME/aosp/prebuilts/go/linux-arm64/bin/go"
@@ -242,94 +239,7 @@ jobs:
           "$HOME/aosp/prebuilts/go/linux-arm64/bin/go" version
 
           echo
-          echo "===== GO PATH TEST ====="
-
-          "$HOME/aosp/prebuilts/go/linux-arm64/bin/go" \
-            env GOOS GOARCH GOROOT
-
-          echo
-          echo "=================================================="
-          echo " ARM64 GO PATH READY"
-          echo "=================================================="
-
-      - name: Diagnose ARM64 Go Compiler
-        shell: bash
-        run: |
-          set -euxo pipefail
-
-          cd "$HOME/aosp"
-
-          echo "=================================================="
-          echo " DIAGNOSE ARM64 GO COMPILER"
-          echo "=================================================="
-
-          GO_ROOT="$HOME/aosp/prebuilts/go/linux-arm64"
-
-          echo
-          echo "===== GO VERSION ====="
-
-          "$GO_ROOT/bin/go" version
-
-          echo
-          echo "===== GO ROOT ====="
-
-          "$GO_ROOT/bin/go" env GOROOT
-          "$GO_ROOT/bin/go" env GOOS
-          "$GO_ROOT/bin/go" env GOARCH
-
-          echo
-          echo "===== GO COMPILER ====="
-
-          ls -l \
-            "$GO_ROOT/pkg/tool/linux_arm64/compile"
-
-          file \
-            "$GO_ROOT/pkg/tool/linux_arm64/compile"
-
-          echo
-          echo "===== GO TOOLCHAIN ====="
-
-          "$GO_ROOT/bin/go" env GOTOOLDIR
-
-          echo
-          echo "===== MICROFACTORY SOURCE ====="
-
-          test -f build/blueprint/microfactory/microfactory.go
-
-          sed -n \
-            '1,220p' \
-            build/blueprint/microfactory/microfactory.go
-
-          echo
-          echo "===== DIRECT MICROFACTORY BUILD ====="
-
-          mkdir -p \
-            out/microfactory-diagnostic
-
-          "$GO_ROOT/bin/go" \
-            build \
-            -x \
-            -trimpath \
-            -o \
-            out/microfactory-diagnostic/microfactory \
-            ./build/blueprint/microfactory
-
-          echo
-          echo "===== MICROFACTORY BUILD RESULT ====="
-
-          test -x \
-            out/microfactory-diagnostic/microfactory
-
-          file \
-            out/microfactory-diagnostic/microfactory
-
-          ls -lh \
-            out/microfactory-diagnostic/microfactory
-
-          echo
-          echo "=================================================="
-          echo " ARM64 GO COMPILER DIAGNOSTIC PASSED"
-          echo "=================================================="
+          echo "===== ARM64 GO PATH READY ====="
 
       - name: Copy X6711 device tree
         shell: bash
@@ -344,9 +254,14 @@ jobs:
             "$GITHUB_WORKSPACE/device/infinix/X6711" \
             device/infinix/X6711
 
-          test -f device/infinix/X6711/AndroidProducts.mk
-          test -f device/infinix/X6711/BoardConfig.mk
-          test -f device/infinix/X6711/device.mk
+          test -f \
+            device/infinix/X6711/AndroidProducts.mk
+
+          test -f \
+            device/infinix/X6711/BoardConfig.mk
+
+          test -f \
+            device/infinix/X6711/device.mk
 
           echo "===== X6711 DEVICE TREE OK ====="
 
@@ -372,15 +287,6 @@ jobs:
           test -f device/infinix/X6711/BoardConfig.mk
 
           echo "Source checks: PASS"
-
-          echo
-          echo "===== GO CHECK ====="
-
-          test -x \
-            "$HOME/aosp/prebuilts/go/linux-arm64/bin/go"
-
-          "$HOME/aosp/prebuilts/go/linux-arm64/bin/go" \
-            version
 
           echo
           echo "===== ENVSETUP ====="
@@ -444,9 +350,7 @@ jobs:
           echo
           echo "===== SOONG SIZE ====="
 
-          du -sh \
-            "$OUT_DIR/soong" \
-            2>/dev/null || true
+          du -sh "$OUT_DIR/soong" 2>/dev/null || true
 
           echo
           echo "=================================================="
