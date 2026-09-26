@@ -55,3 +55,42 @@ local.properties
 
 # Generated X6711 images
 /device/infinix/X6711/prebuilt/*.img
+
+# Full AOSP source tree — keep outside this project repository
+/Android.bp
+/BUILD
+/WORKSPACE
+/art/
+/bionic/
+/bootable/
+/bootstrap.bash
+/build/
+/cts/
+/dalvik/
+/developers/
+/development/
+/device/amlogic/
+/device/common/
+/device/generic/
+/device/google/
+/device/google_car/
+/device/linaro/
+/device/sample/
+/et
+/external/
+/frameworks/
+/hardware/
+/kernel/
+/libcore/
+/libnativehelper/
+/lk_inc.mk
+/packages/
+/pdk/
+/platform_testing/
+/sdk/
+/system/
+/test/
+/toolchain/
+/tools/
+/trusty/
+/vendor/
