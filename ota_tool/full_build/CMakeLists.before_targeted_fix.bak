@@ -1,0 +1,158 @@
+cmake_minimum_required(VERSION 3.10)
+project(delta_generator CXX)
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O1 -w -fPIC")
+find_package(Protobuf REQUIRED)
+find_package(OpenSSL REQUIRED)
+file(GLOB_RECURSE SRCS
+  /data/data/com.termux/files/home/AI14ROM_X6711/ota_tool/update_engine/payload_generator/*.cc /data/data/com.termux/files/home/AI14ROM_X6711/ota_tool/update_engine/payload_consumer/*.cc /data/data/com.termux/files/home/AI14ROM_X6711/ota_tool/update_engine/common/*.cc
+  /data/data/com.termux/files/home/AI14ROM_X6711/ota_tool/deps/libbase/*.cpp /data/data/com.termux/files/home/AI14ROM_X6711/ota_tool/deps/libbase/*.cc)
+list(FILTER SRCS EXCLUDE REGEX "(unittest|_test|mock|fake|test_utils|/tests?/|android|windows|darwin)")
+list(FILTER SRCS EXCLUDE REGEX "boot_img_filesystem_stub\\.cc$")
+
+
+add_executable(delta_generator ${SRCS} /data/data/com.termux/files/home/AI14ROM_X6711/ota_tool/full_build/gen/update_engine/update_metadata.pb.cc)
+
+# Required Android/ChromeOS host implementations for final link
+file(GLOB_RECURSE LIBCHROME_SRCS
+  "${CMAKE_SOURCE_DIR}/../deps/libchrome/base/*.cc"
+  "${CMAKE_SOURCE_DIR}/../deps/libchrome/base/*.cpp"
+)
+list(FILTER LIBCHROME_SRCS EXCLUDE REGEX "/test/")
+list(FILTER LIBCHROME_SRCS EXCLUDE REGEX "/tests/")
+list(FILTER LIBCHROME_SRCS EXCLUDE REGEX "/unittest/")
+list(FILTER LIBCHROME_SRCS EXCLUDE REGEX "/fuzz/")
+list(FILTER LIBCHROME_SRCS EXCLUDE REGEX "/base/android/")
+list(FILTER LIBCHROME_SRCS EXCLUDE REGEX "/base/i18n/")
+list(FILTER LIBCHROME_SRCS EXCLUDE REGEX "file_path_watcher_kqueue\.cc$")
+list(FILTER LIBCHROME_SRCS EXCLUDE REGEX "file_path_watcher_fsevents\.cc$")
+list(FILTER LIBCHROME_SRCS EXCLUDE REGEX "base/debug/stack_trace_posix\.cc$")
+list(FILTER LIBCHROME_SRCS EXCLUDE REGEX "base/base64url\.cc$")
+list(FILTER LIBCHROME_SRCS EXCLUDE REGEX "base/base64\.cc$")
+list(FILTER LIBCHROME_SRCS EXCLUDE REGEX "base/at_exit_unittest\.cc$")
+list(FILTER LIBCHROME_SRCS EXCLUDE REGEX "/.*_test\.cc$")
+list(FILTER LIBCHROME_SRCS EXCLUDE REGEX "/.*_unittest\.cc$")
+list(FILTER LIBCHROME_SRCS EXCLUDE REGEX "allocator/allocator_extension\.cc$")
+list(FILTER LIBCHROME_SRCS EXCLUDE REGEX "allocator/allocator_shim\.cc$")
+
+file(GLOB_RECURSE LIBBRILLO_SRCS
+  "${CMAKE_SOURCE_DIR}/../deps/libbrillo/*.cc"
+  "${CMAKE_SOURCE_DIR}/../deps/libbrillo/*.cpp"
+)
+list(FILTER LIBBRILLO_SRCS EXCLUDE REGEX "/test/")
+list(FILTER LIBBRILLO_SRCS EXCLUDE REGEX "/tests/")
+list(FILTER LIBBRILLO_SRCS EXCLUDE REGEX "/unittest/")
+list(FILTER LIBBRILLO_SRCS EXCLUDE REGEX "/fuzz/")
+
+target_sources(delta_generator PRIVATE
+  ${LIBCHROME_SRCS}
+  ${LIBBRILLO_SRCS}
+)
+
+target_include_directories(delta_generator PRIVATE
+  /data/data/com.termux/files/home/AI14ROM_X6711/ota_tool /data/data/com.termux/files/home/AI14ROM_X6711/ota_tool/update_engine /data/data/com.termux/files/home/AI14ROM_X6711/ota_tool/full_build/gen /data/data/com.termux/files/home/AI14ROM_X6711/ota_tool/deps/gflags_install/include  /data/data/com.termux/files/home/AI14ROM_X6711/ota_tool/deps/libbase /data/data/com.termux/files/home/AI14ROM_X6711/ota_tool/deps/libbase/include /data/data/com.termux/files/home/AI14ROM_X6711/ota_tool/deps/libchrome /data/data/com.termux/files/home/AI14ROM_X6711/ota_tool/deps/libbrillo /data/data/com.termux/files/home/AI14ROM_X6711/ota_tool/deps/puffin /data/data/com.termux/files/home/AI14ROM_X6711/ota_tool/deps/bsdiff /data/data/com.termux/files/home/AI14ROM_X6711/ota_tool/deps/bsdiff/include /data/data/com.termux/files/home/AI14ROM_X6711/ota_tool/deps/zucchini)
+target_link_libraries(delta_generator
+  log
+  /data/data/com.termux/files/home/AI14ROM_X6711/ota_tool/deps/gflags_install/lib/libgflags.a protobuf::libprotobuf OpenSSL::Crypto
+  lz4 zstd bz2 z lzma pthread)
+target_include_directories(delta_generator PRIVATE /data/data/com.termux/files/home/AI14ROM_X6711/ota_tool /data/data/com.termux/files/home/AI14ROM_X6711/ota_tool/deps/external_avb)
+get_target_property(S delta_generator SOURCES)
+list(FILTER S EXCLUDE REGEX "(benchmark|test_main|/properties\\.cpp|/utf8\\.cpp)")
+set_property(TARGET delta_generator PROPERTY SOURCES ${S})
+foreach(p
+  ${CMAKE_CURRENT_SOURCE_DIR}/../deps/googletest/googletest/include
+  ${CMAKE_CURRENT_SOURCE_DIR}/../deps/system_core/fs_mgr/libsnapshot/include)
+  if(EXISTS ${p})
+    target_include_directories(delta_generator PRIVATE ${p})
+  endif()
+endforeach()
+target_compile_definitions(delta_generator PRIVATE __ANDROID_UNAVAILABLE_SYMBOLS_ARE_WEAK__)
+
+target_include_directories(delta_generator PRIVATE
+  "${CMAKE_CURRENT_SOURCE_DIR}/../deps/googletest/googletest/include"
+  "${CMAKE_CURRENT_SOURCE_DIR}/gen"
+  "${CMAKE_CURRENT_SOURCE_DIR}/../deps/system_core/fs_mgr/libsnapshot/include"
+  "${CMAKE_CURRENT_SOURCE_DIR}/../deps/system_extras/libfec/include"
+)
+target_include_directories(delta_generator PRIVATE
+  "${CMAKE_CURRENT_SOURCE_DIR}/gen"
+)
+target_include_directories(delta_generator PRIVATE
+  "/../deps/puffin"
+  "/../deps/puffin/src"
+)
+target_include_directories(delta_generator PRIVATE
+  "${CMAKE_CURRENT_SOURCE_DIR}/../deps/puffin/src/include"
+)
+get_target_property(UE_SOURCES delta_generator SOURCES)
+list(FILTER UE_SOURCES EXCLUDE REGEX ".*_fuzzer\\.cc$")
+list(FILTER UE_SOURCES EXCLUDE REGEX ".*_fuzzer\\.cpp$")
+set_property(TARGET delta_generator PROPERTY SOURCES ${UE_SOURCES})
+target_include_directories(delta_generator PRIVATE
+  "${CMAKE_CURRENT_SOURCE_DIR}/../deps/system_core/libcrypto_utils/include"
+)
+target_include_directories(delta_generator PRIVATE
+  "${CMAKE_CURRENT_SOURCE_DIR}/../deps/zucchini"
+  "${CMAKE_CURRENT_SOURCE_DIR}/../deps/zucchini/include"
+)
+target_include_directories(delta_generator PRIVATE
+  "${CMAKE_CURRENT_SOURCE_DIR}/../deps/zucchini/aosp/include/components"
+)
+target_include_directories(delta_generator PRIVATE
+  "${CMAKE_CURRENT_SOURCE_DIR}/../deps/zucchini/aosp/include"
+)
+target_include_directories(delta_generator PRIVATE "/data/data/com.termux/files/home/AI14ROM_X6711/ota_tool/full_build/gen")
+file(GLOB_RECURSE GEN_PB_SRCS "/data/data/com.termux/files/home/AI14ROM_X6711/ota_tool/full_build/gen/*.pb.cc")
+target_sources(delta_generator PRIVATE ${GEN_PB_SRCS})
+
+target_include_directories(delta_generator PRIVATE
+  "${CMAKE_CURRENT_SOURCE_DIR}/gen"
+  "${CMAKE_CURRENT_SOURCE_DIR}/../deps/googletest/googletest/include"
+  "${CMAKE_CURRENT_SOURCE_DIR}/../deps/system_core/fs_mgr/libsnapshot/include"
+  "${CMAKE_CURRENT_SOURCE_DIR}/../deps/system_core/libcrypto_utils/include"
+  "${CMAKE_CURRENT_SOURCE_DIR}/../deps/system_extras/libfec/include"
+  "${CMAKE_CURRENT_SOURCE_DIR}/../deps/zucchini/aosp/include"
+  "${CMAKE_CURRENT_SOURCE_DIR}/../deps/zucchini/aosp/include/components"
+  "${CMAKE_CURRENT_SOURCE_DIR}/../deps/puffin/src/include"
+  "${CMAKE_CURRENT_SOURCE_DIR}/../deps/lzma/C"
+  "${CMAKE_CURRENT_SOURCE_DIR}/../deps/erofs-utils/include"
+  "${CMAKE_CURRENT_SOURCE_DIR}/../deps/bsdiff"
+  "${CMAKE_CURRENT_SOURCE_DIR}/../deps/system_core/libutils/include"
+  "${CMAKE_CURRENT_SOURCE_DIR}/../deps/system_core/libcutils/include"
+  "${CMAKE_CURRENT_SOURCE_DIR}/../deps/system_extras/verity/include"
+  "${CMAKE_CURRENT_SOURCE_DIR}/../deps/system_extras/ext4_utils/include"
+  "${CMAKE_CURRENT_SOURCE_DIR}/../deps/system_extras/squashfs_utils"
+)
+
+file(GLOB_RECURSE FINAL_GEN_PB_SRCS
+  "${CMAKE_CURRENT_SOURCE_DIR}/gen/*.pb.cc"
+)
+
+target_sources(delta_generator PRIVATE
+  ${FINAL_GEN_PB_SRCS}
+)
+
+get_target_property(FINAL_UE_SOURCES delta_generator SOURCES)
+
+list(FILTER FINAL_UE_SOURCES EXCLUDE REGEX ".*_fuzzer\\.cc$")
+list(FILTER FINAL_UE_SOURCES EXCLUDE REGEX ".*_fuzzer\\.cpp$")
+list(FILTER FINAL_UE_SOURCES EXCLUDE REGEX ".*/test_main\\.cc$")
+list(FILTER FINAL_UE_SOURCES EXCLUDE REGEX ".*/test_main\\.cpp$")
+list(FILTER FINAL_UE_SOURCES EXCLUDE REGEX ".*/.*_benchmark\\.cc$")
+list(FILTER FINAL_UE_SOURCES EXCLUDE REGEX ".*/.*_benchmark\\.cpp$")
+
+set_property(
+  TARGET delta_generator
+  PROPERTY SOURCES ${FINAL_UE_SOURCES}
+)
+
+target_compile_definitions(
+  delta_generator PRIVATE
+  __ANDROID_UNAVAILABLE_SYMBOLS_ARE_WEAK__
+)
+
+# AI14ROM bootimg.h compatibility header
+set(AI14ROM_BOOTIMG_GEN "${CMAKE_CURRENT_SOURCE_DIR}/gen")
+target_include_directories(delta_generator PRIVATE
+    "${AI14ROM_BOOTIMG_GEN}"
+)

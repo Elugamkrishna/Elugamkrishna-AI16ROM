@@ -1,0 +1,310 @@
+name: AI16ROM X6711 Soong Core Probe
+
+on:
+  workflow_dispatch:
+
+jobs:
+  soong-core:
+    name: X6711 Soong Core Validation
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout AI16ROM
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Check runner resources
+        shell: bash
+        run: |
+          set -eux
+
+          echo "===== RUNNER ====="
+          uname -a
+
+          echo
+          echo "===== CPU ====="
+          nproc
+
+          echo
+          echo "===== MEMORY ====="
+          free -h
+
+          echo
+          echo "===== DISK ====="
+          df -h /
+
+      - name: Install repo
+        shell: bash
+        run: |
+          set -eux
+
+          mkdir -p "$HOME/bin"
+
+          curl -fsSL \
+            https://storage.googleapis.com/git-repo-downloads/repo \
+            -o "$HOME/bin/repo"
+
+          chmod +x "$HOME/bin/repo"
+
+          echo "$HOME/bin" >> "$GITHUB_PATH"
+
+          "$HOME/bin/repo" --version
+
+      - name: Initialize minimal AOSP
+        shell: bash
+        run: |
+          set -eux
+
+          mkdir -p aosp
+          cd aosp
+
+          repo init \
+            -u https://android.googlesource.com/platform/manifest \
+            -b android16-release \
+            --depth=1 \
+            --no-tags
+
+      - name: Sync Soong core and required AOSP build projects
+        shell: bash
+        run: |
+          set -eux
+
+          cd aosp
+
+          repo sync \
+            --current-branch \
+            --no-tags \
+            --optimized-fetch \
+            --prune \
+            -j2 \
+            build/soong \
+            build/make \
+            build/blueprint \
+            build/release \
+            external/golang-protobuf \
+            external/starlark-go \
+            prebuilts/build-tools
+
+          echo
+          echo "===== REQUIRED AOSP PROJECTS ====="
+
+          test -f build/release/release_config_map.textproto
+          test -x prebuilts/build-tools/linux-arm64/bin/ckati
+          test -x prebuilts/build-tools/linux-arm64/bin/ninja
+          test -x prebuilts/build-tools/linux-arm64/bin/nsjail
+
+          echo "build/release: PASS"
+          echo "ckati: PASS"
+          echo "ninja: PASS"
+          echo "nsjail: PASS"
+
+      - name: Install ARM64 Go toolchain
+        shell: bash
+        run: |
+          set -eux
+
+          cd aosp
+
+          GO_VERSION="1.24.13"
+          GO_ARCHIVE="go${GO_VERSION}.linux-arm64.tar.gz"
+          GO_ROOT="$PWD/prebuilts/go/linux-arm64"
+
+          echo "===== INSTALL GO ${GO_VERSION} ARM64 ====="
+
+          rm -rf "$GO_ROOT"
+          mkdir -p prebuilts/go
+
+          curl -fL \
+            "https://go.dev/dl/${GO_ARCHIVE}" \
+            -o "/tmp/${GO_ARCHIVE}"
+
+          rm -rf /tmp/go
+
+          tar -xzf \
+            "/tmp/${GO_ARCHIVE}" \
+            -C /tmp
+
+          mv /tmp/go "$GO_ROOT"
+
+          export GOROOT="$GO_ROOT"
+          export PATH="$GOROOT/bin:$PATH"
+
+          echo
+          echo "===== GO VERSION ====="
+          go version
+
+          echo
+          echo "===== GO ROOT ====="
+          go env GOROOT
+
+          echo
+          echo "===== GO ARCH ====="
+          go env GOARCH
+
+          echo
+          echo "===== STANDARD LIBRARY ====="
+
+          test -f "$GOROOT/src/go/token/token.go"
+          test -f "$GOROOT/src/io/io.go"
+          test -f "$GOROOT/src/io/ioutil/ioutil.go"
+
+          GODEBUG=installgoroot=all \
+            GOPROXY=off \
+            GOTOOLCHAIN=local \
+            go install std
+
+          test -f "$GOROOT/pkg/linux_arm64/go/token.a"
+          test -f "$GOROOT/pkg/linux_arm64/io.a"
+          test -f "$GOROOT/pkg/linux_arm64/io/ioutil.a"
+
+          echo "ARM64 GO + STANDARD LIBRARY: PASS"
+
+      - name: Install X6711 device tree
+        shell: bash
+        run: |
+          set -eux
+
+          test -d device/infinix/X6711
+
+          mkdir -p aosp/device/infinix
+
+          cp -a \
+            device/infinix/X6711 \
+            aosp/device/infinix/
+
+          echo "X6711 device tree copied"
+
+      - name: Install X6711 vendor tree
+        shell: bash
+        run: |
+          set -eux
+
+          test -d vendor/infinix/X6711
+
+          mkdir -p aosp/vendor/infinix
+
+          cp -a \
+            vendor/infinix/X6711 \
+            aosp/vendor/infinix/
+
+          echo "X6711 vendor tree copied"
+
+          echo
+          echo "===== VENDOR FILES ====="
+
+          find aosp/vendor/infinix/X6711 \
+            -maxdepth 2 \
+            -type f \
+            | sort \
+            | head -200
+
+      - name: Verify X6711 product files
+        shell: bash
+        run: |
+          set -eux
+
+          cd aosp
+
+          test -f device/infinix/X6711/AndroidProducts.mk
+          test -f device/infinix/X6711/aosp_X6711.mk
+          test -f device/infinix/X6711/device.mk
+          test -f device/infinix/X6711/BoardConfig.mk
+
+          test -f vendor/infinix/X6711/X6711-vendor.mk
+
+          echo
+          echo "===== PRODUCT REFERENCES ====="
+
+          grep -R "aosp_X6711" \
+            device/infinix/X6711/AndroidProducts.mk \
+            device/infinix/X6711/aosp_X6711.mk
+
+          echo
+          echo "===== VENDOR REFERENCE ====="
+
+          grep -R "vendor/infinix/X6711" \
+            device/infinix/X6711/aosp_X6711.mk
+
+          echo
+          echo "X6711 PRODUCT + VENDOR FILES: PASS"
+
+      - name: Generate Soong
+        shell: bash
+        run: |
+          set -ex
+
+          cd aosp
+
+          export TOP="$PWD"
+          export GOROOT="$PWD/prebuilts/go/linux-arm64"
+          export PATH="$PWD/prebuilts/build-tools/linux-arm64/bin:$GOROOT/bin:$PATH"
+
+          echo "===== BUILD ENVIRONMENT ====="
+          echo "TOP=$TOP"
+          echo "GOROOT=$GOROOT"
+
+          echo
+          echo "===== GO ====="
+
+          go version
+          go env GOROOT
+          go env GOARCH
+
+          echo
+          echo "===== BUILD TOOLS ====="
+
+          ckati --version || true
+          ninja --version
+          nsjail --version || true
+
+          echo
+          echo "===== RELEASE CONFIG ====="
+
+          test -f build/release/release_config_map.textproto
+
+          echo
+          echo "===== AOSP ENVIRONMENT ====="
+
+          source build/envsetup.sh
+
+          echo
+          echo "===== LUNCH X6711 ====="
+
+          lunch aosp_X6711-bp2a-userdebug
+
+          echo
+          echo "===== PRODUCT VARIABLES ====="
+
+          get_build_var TARGET_PRODUCT
+          get_build_var TARGET_BUILD_VARIANT
+          get_build_var TARGET_ARCH
+
+          echo
+          echo "===== SOONG GENERATION ====="
+
+          build/soong/soong_ui.bash \
+            --make-mode \
+            nothing
+
+      - name: Validate generated Ninja
+        shell: bash
+        run: |
+          set -eux
+
+          cd aosp
+
+          test -s out/soong/build.aosp_X6711.ninja
+
+          echo
+          echo "======================================"
+          echo " AI16ROM X6711 SOONG CORE: PASS"
+          echo "======================================"
+          echo
+
+          ls -lh \
+            out/soong/build.aosp_X6711.ninja
+
+          echo
+          echo "Generated Ninja validation: PASS"

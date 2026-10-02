@@ -1,0 +1,20 @@
+include_directories("${CMAKE_SOURCE_DIR}/../local_glog")
+cmake_minimum_required(VERSION 3.10)
+project(delta_generator C CXX)
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O1 -w -fPIC")
+find_package(Protobuf REQUIRED)
+find_package(OpenSSL REQUIRED)
+file(GLOB_RECURSE SRCS
+  /data/data/com.termux/files/home/AI14ROM_X6711/ota_tool/update_engine/payload_generator/*.cc /data/data/com.termux/files/home/AI14ROM_X6711/ota_tool/update_engine/common/*.cc
+  /data/data/com.termux/files/home/AI14ROM_X6711/ota_tool/deps/libbase/*.cpp /data/data/com.termux/files/home/AI14ROM_X6711/ota_tool/deps/libbase/*.cc)
+list(FILTER SRCS EXCLUDE REGEX "(unittest|_test|mock|fake|test_utils|/tests?/|android|windows|darwin)")
+list(FILTER SRCS EXCLUDE REGEX "boot_img_filesystem_stub\\.cc$")
+
+
+add_executable(delta_generator ${SRCS} /data/data/com.termux/files/home/AI14ROM_X6711/ota_tool/full_build/gen/update_engine/update_metadata.pb.cc
+)
+target_include_directories(delta_generator PRIVATE
+    "${CMAKE_SOURCE_DIR}/../deps/libbase/include"
+)
+

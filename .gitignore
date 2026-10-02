@@ -1,0 +1,27 @@
+# AI14ROM OTA build outputs
+ota_tool/full_build/clean_build/
+ota_tool/full_build/CMakeFiles/
+ota_tool/full_build/*.log
+ota_tool/full_build/*.o
+ota_tool/full_build/delta_generator
+ota_tool/**/build/
+ota_tool/**/.ninja/
+
+# Local temporary files
+*.tmp
+*.swp
+
+# Large vendored Android dependencies - fetched by GitHub Actions
+ota_tool/deps/libbase/
+ota_tool/deps/libchrome/
+ota_tool/deps/libbrillo/
+ota_tool/deps/gflags/
+ota_tool/deps/googletest/
+ota_tool/deps/puffin/
+ota_tool/deps/bsdiff/
+ota_tool/deps/zucchini/
+ota_tool/deps/erofs-utils/
+ota_tool/deps/lzma/
+ota_tool/deps/system_core/
+ota_tool/deps/system_extras/
+ota_tool/deps/external_avb/

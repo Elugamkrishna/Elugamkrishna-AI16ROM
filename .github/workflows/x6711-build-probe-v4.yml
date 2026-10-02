@@ -1,0 +1,575 @@
+name: AI16ROM X6711 Build Probe V4
+
+'on':
+  workflow_dispatch:
+
+jobs:
+  bootstrap:
+    name: X6711 x86_64 AOSP Build Probe
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+
+    steps:
+
+      - name: Checkout AI16ROM
+        uses: actions/checkout@v4
+
+      - name: Runner and toolchain check
+        shell: bash
+        run: |
+          set -exo pipefail
+
+          echo "===== RUNNER ====="
+          uname -a
+          uname -m
+          nproc
+          free -h
+          df -h /
+
+          test "$(uname -m)" = "x86_64"
+
+          echo "===== JAVA ====="
+          java -version
+
+          echo "===== NINJA ====="
+          ninja --version
+
+      - name: Install repo launcher
+        shell: bash
+        run: |
+          set -exo pipefail
+
+          mkdir -p "$HOME/bin"
+
+          curl -fsSL \
+            https://storage.googleapis.com/git-repo-downloads/repo \
+            -o "$HOME/bin/repo"
+
+          chmod +x "$HOME/bin/repo"
+
+          echo "$HOME/bin" >> "$GITHUB_PATH"
+
+          "$HOME/bin/repo" --version
+
+      - name: Initialize AOSP Android 16
+        shell: bash
+        run: |
+          set -exo pipefail
+
+          rm -rf "$HOME/aosp"
+
+          mkdir -p "$HOME/aosp"
+
+          cd "$HOME/aosp"
+
+          repo init \
+            -u https://android.googlesource.com/platform/manifest \
+            -b android16-release \
+            --depth=1 \
+            --partial-clone \
+            --clone-filter=blob:limit=10M \
+            --no-tags
+
+          test -f .repo/manifest.xml
+
+          echo "===== AOSP INIT PASS ====="
+
+      - name: Sync AOSP Soong dependencies
+        shell: bash
+        run: |
+          set -exo pipefail
+
+          cd "$HOME/aosp"
+
+          echo "===== AOSP SOURCE SYNC ====="
+
+          repo sync \
+            --current-branch \
+            --no-tags \
+            --optimized-fetch \
+            --prune \
+            -j2 \
+            build/soong \
+            build/make \
+            build/blueprint \
+            build/release \
+            external/golang-protobuf \
+            external/go-cmp \
+            external/starlark-go \
+            system/tools/aidl \
+            system/tools/xsdc \
+            system/tools/hidl \
+            system/apex \
+            hardware/interfaces \
+            kernel/configs \
+            system/sepolicy \
+            system/libvintf \
+            system/hardware/interfaces \
+            platform_testing \
+            packages/modules/NeuralNetworks \
+            test/app_compat/csuite \
+            packages/modules/common \
+            external/elfutils \
+            frameworks/native \
+            frameworks/base \
+            art \
+            libcore \
+            cts \
+            device/google/cuttlefish \
+            prebuilts/bazel/common \
+            prebuilts/build-tools \
+            prebuilts/clang/host/linux-x86 \
+            prebuilts/module_sdk/art \
+            toolchain/pgo-profiles
+
+          echo "===== VERIFY SYNCED DIRECTORIES ====="
+
+          test -d build/soong
+          test -d build/make
+          test -d build/blueprint
+          test -d build/release
+
+          test -d external/golang-protobuf
+          test -d external/go-cmp
+          test -d external/starlark-go
+
+          test -d system/tools/aidl
+          test -d system/tools/xsdc
+          test -d system/tools/hidl
+          test -d system/apex
+
+          test -d hardware/interfaces
+          test -d kernel/configs
+          test -d system/sepolicy
+          test -d system/libvintf
+          test -d system/hardware/interfaces
+
+          test -d platform_testing
+          test -d packages/modules/NeuralNetworks
+          test -d test/app_compat/csuite
+          test -d packages/modules/common
+
+          test -d external/elfutils
+          test -d frameworks/native
+          test -d frameworks/base
+          test -d art
+          test -d libcore
+
+          test -d cts
+          test -d device/google/cuttlefish
+
+          test -d prebuilts/bazel/common
+          test -d prebuilts/build-tools
+          test -d prebuilts/clang/host/linux-x86
+          test -d prebuilts/module_sdk/art
+          test -d toolchain/pgo-profiles
+
+          echo "===== ALL REQUIRED SOURCE PROJECTS PRESENT ====="
+
+      - name: Verify required Android.bp modules
+        shell: bash
+        run: |
+          set -exo pipefail
+
+          cd "$HOME/aosp"
+
+          echo "===== CTS ====="
+
+          test -f cts/Android.bp
+
+          grep -R -n \
+            'name: "cts_defaults"' \
+            cts \
+            | head -20
+
+          grep -R -n \
+            'name: "cts_error_prone_rules"' \
+            cts \
+            | head -20
+
+          echo "CTS MODULES PASS"
+
+          echo "===== CUTTLEFISH ====="
+
+          test -f device/google/cuttlefish/Android.bp
+
+          grep -R -n \
+            'name: "cuttlefish_base"' \
+            device/google/cuttlefish \
+            | head -20
+
+          echo "CUTTLEFISH MODULE PASS"
+
+          echo "===== FRAMEWORKS BASE ====="
+
+          test -f frameworks/base/Android.bp
+          test -f frameworks/base/api/Android.bp
+
+          grep -R -n \
+            'name: "framework-non-updatable-unbundled-defaults"' \
+            frameworks/base/api \
+            | head -20
+
+          echo "FRAMEWORK MODULE PASS"
+
+          echo "===== LIBVINTF ====="
+
+          test -f system/libvintf/Android.bp
+
+          grep -R -n \
+            'name: "libvintf_static_user_defaults"' \
+            system/libvintf \
+            | head -20
+
+          echo "LIBVINTF MODULE PASS"
+
+          echo "===== PLATFORM TESTING ====="
+
+          test -f platform_testing/libraries/rdroidtest/Android.bp
+
+          grep -R -n \
+            'name: "rdroidtest.defaults"' \
+            platform_testing/libraries/rdroidtest \
+            | head -20
+
+          echo "RDROIDTEST MODULE PASS"
+
+          echo "===== NEURAL NETWORKS ====="
+
+          test -f packages/modules/NeuralNetworks/common/Android.bp
+
+          grep -R -n \
+            'name: "neuralnetworks_utils_defaults"' \
+            packages/modules/NeuralNetworks \
+            | head -20
+
+          echo "NEURAL NETWORK MODULE PASS"
+
+          echo "===== MEDIA INTERFACES ====="
+
+          test -f system/hardware/interfaces/media/Android.bp
+
+          grep -R -n \
+            'name: "latest_android_media_audio_common_types_cpp_static"' \
+            system/hardware/interfaces/media \
+            | head -20
+
+          grep -R -n \
+            'name: "latest_android_media_soundtrigger_types_import_interface"' \
+            system/hardware/interfaces/media \
+            | head -20
+
+          echo "MEDIA MODULES PASS"
+
+          echo "===== PREVIOUS SOONG MODULES ====="
+
+          grep -R -q \
+            --include='*.bp' \
+            'name: "s-launched-apex-module"' \
+            packages/modules/common
+
+          grep -R -q \
+            --include='*.bp' \
+            'name: "framework-system-server-module-defaults"' \
+            packages/modules/common
+
+          grep -R -q \
+            --include='*.bp' \
+            'name: "elfutils_transitive_defaults"' \
+            external/elfutils
+
+          grep -R -q \
+            --include='*.bp' \
+            'name: "service_fuzzer_defaults_rs"' \
+            frameworks/native
+
+          echo "PREVIOUS SOONG MODULES PASS"
+
+      - name: Verify AOSP build infrastructure
+        shell: bash
+        run: |
+          set -exo pipefail
+
+          cd "$HOME/aosp"
+
+          test -f build/soong/soong_ui.bash
+          test -f build/make/core/main.mk
+
+          test -f build/blueprint/microfactory/microfactory.bash
+          test -f build/blueprint/microfactory/microfactory.go
+
+          test -f system/tools/aidl/build/aidl_interface.go
+          test -f system/tools/xsdc/build/xsdc.go
+
+          test -f system/tools/hidl/Android.bp
+          test -f system/tools/hidl/build/Android.bp
+
+          test -f system/apex/Android.bp
+
+          test -f hardware/interfaces/Android.bp
+
+          test -f kernel/configs/build/Android.bp
+
+          test -f system/sepolicy/build/soong/Android.bp
+
+          test -x prebuilts/build-tools/linux-x86/bin/ckati
+
+          test -f prebuilts/clang/host/linux-x86/Android.bp
+
+          test -f prebuilts/module_sdk/art/Android.bp
+
+          test -f toolchain/pgo-profiles/sampling/afdo_profiles.mk
+
+          echo "===== BUILD INFRASTRUCTURE PASS ====="
+
+      - name: Verify HIDL registration
+        shell: bash
+        run: |
+          set -exo pipefail
+
+          cd "$HOME/aosp"
+
+          grep -R -n \
+            'RegisterModuleType("hidl_interface"' \
+            system/tools/hidl/build
+
+          grep -R -n \
+            'RegisterModuleType("hidl_package_root", HidlPackageRootFactory)' \
+            system/tools/hidl/build
+
+          echo "===== HIDL REGISTRATION PASS ====="
+
+      - name: Integrate AI16ROM X6711 device tree
+        shell: bash
+        run: |
+          set -exo pipefail
+
+          DEVICE_SRC="$GITHUB_WORKSPACE/device/infinix/X6711"
+          VENDOR_SRC="$GITHUB_WORKSPACE/vendor/infinix/X6711"
+
+          DEVICE_DST="$HOME/aosp/device/infinix/X6711"
+          VENDOR_DST="$HOME/aosp/vendor/infinix/X6711"
+
+          echo "===== VERIFY AI16ROM DEVICE TREE ====="
+
+          test -f "$DEVICE_SRC/AndroidProducts.mk"
+          test -f "$DEVICE_SRC/aosp_X6711.mk"
+          test -f "$DEVICE_SRC/device.mk"
+          test -f "$DEVICE_SRC/BoardConfig.mk"
+
+          mkdir -p "$HOME/aosp/device/infinix"
+          mkdir -p "$HOME/aosp/vendor/infinix"
+
+          rm -rf "$DEVICE_DST"
+          rm -rf "$VENDOR_DST"
+
+          cp -a \
+            "$DEVICE_SRC" \
+            "$HOME/aosp/device/infinix/"
+
+          if test -f "$VENDOR_SRC/X6711-vendor.mk"; then
+
+            cp -a \
+              "$VENDOR_SRC" \
+              "$HOME/aosp/vendor/infinix/"
+
+            test -f "$VENDOR_DST/X6711-vendor.mk"
+
+            echo "REAL VENDOR TREE FOUND"
+
+          else
+
+            mkdir -p "$VENDOR_DST"
+
+            cat > "$VENDOR_DST/X6711-vendor.mk" <<'EOF'
+          LOCAL_PATH := vendor/infinix/X6711
+
+          # AI16ROM X6711 VENDOR BOOTSTRAP
+          # Real proprietary V840 vendor blobs must be provisioned separately.
+
+          ifneq ($(wildcard $(LOCAL_PATH)/proprietary/*),)
+          PRODUCT_COPY_FILES += $(call find-copy-subdir-files,*,$(LOCAL_PATH)/proprietary,$(TARGET_COPY_OUT_VENDOR))
+          endif
+          EOF
+
+            test -f "$VENDOR_DST/X6711-vendor.mk"
+
+            echo "BOOTSTRAP VENDOR TREE CREATED"
+
+          fi
+
+          test -f "$DEVICE_DST/AndroidProducts.mk"
+          test -f "$DEVICE_DST/aosp_X6711.mk"
+          test -f "$DEVICE_DST/device.mk"
+          test -f "$DEVICE_DST/BoardConfig.mk"
+          test -f "$VENDOR_DST/X6711-vendor.mk"
+
+          echo "===== X6711 DEVICE TREE PASS ====="
+
+      - name: Bootstrap official Go AMD64
+        shell: bash
+        run: |
+          set -exo pipefail
+
+          cd "$HOME/aosp"
+
+          GO_ARCHIVE="go1.24.13.linux-amd64.tar.gz"
+
+          GO_URL="https://go.dev/dl/${GO_ARCHIVE}"
+
+          GO_SHA256="1fc94b57134d51669c72173ad5d49fd62afb0f1db9bf3f798fd98ee423f8d730"
+
+          curl -fL \
+            "$GO_URL" \
+            -o "$HOME/$GO_ARCHIVE"
+
+          echo "${GO_SHA256}  $HOME/$GO_ARCHIVE" | sha256sum -c -
+
+          rm -rf prebuilts/go/linux-x86
+
+          mkdir -p prebuilts/go/linux-x86
+
+          tar \
+            -xzf "$HOME/$GO_ARCHIVE" \
+            --strip-components=1 \
+            -C prebuilts/go/linux-x86
+
+          export GOROOT="$HOME/aosp/prebuilts/go/linux-x86"
+          export PATH="$GOROOT/bin:$PATH"
+
+          "$GOROOT/bin/go" version
+
+          GODEBUG=installgoroot=all \
+            "$GOROOT/bin/go" install std
+
+          test -f \
+            "$GOROOT/pkg/linux_amd64/go/token.a"
+
+          test -f \
+            "$GOROOT/pkg/linux_amd64/io.a"
+
+          test -f \
+            "$GOROOT/pkg/linux_amd64/io/ioutil.a"
+
+          echo "===== GO AMD64 PASS ====="
+
+      - name: Verify X6711 product configuration
+        shell: bash
+        run: |
+          set -exo pipefail
+
+          cd "$HOME/aosp"
+
+          test -f device/infinix/X6711/AndroidProducts.mk
+          test -f device/infinix/X6711/aosp_X6711.mk
+          test -f device/infinix/X6711/device.mk
+          test -f device/infinix/X6711/BoardConfig.mk
+
+          test -f vendor/infinix/X6711/X6711-vendor.mk
+
+          grep -n \
+            "aosp_X6711" \
+            device/infinix/X6711/AndroidProducts.mk
+
+          grep -n \
+            "device/infinix/X6711/device.mk" \
+            device/infinix/X6711/aosp_X6711.mk
+
+          grep -n \
+            "vendor/infinix/X6711/X6711-vendor.mk" \
+            device/infinix/X6711/aosp_X6711.mk
+
+          echo "===== PRODUCT CONFIGURATION PASS ====="
+
+      - name: Soong bootstrap and X6711 lunch
+        shell: bash
+        run: |
+          set -exo pipefail
+
+          cd "$HOME/aosp"
+
+          export GOROOT="$HOME/aosp/prebuilts/go/linux-x86"
+          export PATH="$GOROOT/bin:$PATH"
+
+          source build/envsetup.sh
+
+          lunch aosp_X6711-bp2a-userdebug
+
+          TARGET_PRODUCT="$(get_build_var TARGET_PRODUCT)"
+          TARGET_BUILD_VARIANT="$(get_build_var TARGET_BUILD_VARIANT)"
+          TARGET_ARCH="$(get_build_var TARGET_ARCH)"
+
+          echo "TARGET_PRODUCT       : $TARGET_PRODUCT"
+          echo "TARGET_BUILD_VARIANT : $TARGET_BUILD_VARIANT"
+          echo "TARGET_ARCH          : $TARGET_ARCH"
+
+          test "$TARGET_PRODUCT" = "aosp_X6711"
+          test "$TARGET_BUILD_VARIANT" = "userdebug"
+          test "$TARGET_ARCH" = "arm64"
+
+          echo "===== SOONG DUMPVARS ====="
+
+          build/soong/soong_ui.bash \
+            --dumpvars-mode \
+            --vars="COMMON_LUNCH_CHOICES HOST_PREBUILT_TAG TARGET_BUILD_VARIANT TARGET_PRODUCT TARGET_ARCH print report_config" \
+            --abs-vars="ANDROID_CLANG_PREBUILTS ANDROID_JAVA_HOME ANDROID_JAVA_TOOLCHAIN HOST_OUT HOST_OUT_EXECUTABLES HOST_OUT_TESTCASES OUT_DIR PRODUCT_OUT SOONG_HOST_OUT SOONG_HOST_OUT_EXECUTABLES TARGET_OUT_TESTCASES print" \
+            --var-prefix=var_cache_ \
+            --abs-var-prefix=abs_var_cache_
+
+          echo "===== SOONG BOOTSTRAP PASS ====="
+
+      - name: Ninja compile probe - libbase
+        shell: bash
+        run: |
+          set -exo pipefail
+
+          cd "$HOME/aosp"
+
+          export GOROOT="$HOME/aosp/prebuilts/go/linux-x86"
+          export PATH="$GOROOT/bin:$PATH"
+
+          source build/envsetup.sh
+
+          lunch aosp_X6711-bp2a-userdebug
+
+          TARGET_PRODUCT="$(get_build_var TARGET_PRODUCT)"
+          TARGET_BUILD_VARIANT="$(get_build_var TARGET_BUILD_VARIANT)"
+          TARGET_ARCH="$(get_build_var TARGET_ARCH)"
+
+          echo "===== FINAL TARGET ====="
+
+          echo "TARGET_PRODUCT       : $TARGET_PRODUCT"
+          echo "TARGET_BUILD_VARIANT : $TARGET_BUILD_VARIANT"
+          echo "TARGET_ARCH          : $TARGET_ARCH"
+
+          test "$TARGET_PRODUCT" = "aosp_X6711"
+          test "$TARGET_BUILD_VARIANT" = "userdebug"
+          test "$TARGET_ARCH" = "arm64"
+
+          echo "===== FINAL MODULE PRESENCE ====="
+
+          test -f cts/Android.bp
+          test -f device/google/cuttlefish/Android.bp
+          test -f frameworks/base/Android.bp
+          test -f frameworks/base/api/Android.bp
+
+          test -f system/libvintf/Android.bp
+          test -f system/hardware/interfaces/media/Android.bp
+          test -f platform_testing/libraries/rdroidtest/Android.bp
+          test -f packages/modules/NeuralNetworks/common/Android.bp
+
+          echo "CTS                 : PRESENT"
+          echo "Cuttlefish           : PRESENT"
+          echo "Frameworks Base      : PRESENT"
+          echo "LibVINTF             : PRESENT"
+          echo "Media Interfaces     : PRESENT"
+          echo "Platform Testing     : PRESENT"
+          echo "NeuralNetworks       : PRESENT"
+
+          echo "===== NINJA COMPILE PROBE ====="
+
+          m -j2 libbase
+
+          echo "=========================================="
+          echo " AI16ROM X6711 LIBBASE PROBE SUCCESS"
+          echo "=========================================="

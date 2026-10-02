@@ -1,0 +1,92 @@
+name: AI16ROM AOSP Provisioning
+
+on:
+  workflow_dispatch:
+
+jobs:
+  provision:
+    runs-on: ubuntu-24.04-arm
+
+    steps:
+      - name: Checkout AI16ROM
+        uses: actions/checkout@v4
+
+      - name: Prepare build tools
+        shell: bash
+        run: |
+          set -e
+
+          sudo apt-get update
+          sudo apt-get install -y git curl python3
+
+          git --version
+          python3 --version
+
+      - name: Install repo tool
+        shell: bash
+        run: |
+          set -e
+
+          mkdir -p "$HOME/bin"
+
+          curl -L https://storage.googleapis.com/git-repo-downloads/repo \
+            -o "$HOME/bin/repo"
+
+          chmod a+x "$HOME/bin/repo"
+
+          export PATH="$HOME/bin:$PATH"
+          echo "$HOME/bin" >> "$GITHUB_PATH"
+
+          repo --version
+
+      - name: Initialize Android 16 AOSP
+        shell: bash
+        run: |
+          set -e
+
+          mkdir -p "$HOME/aosp"
+          cd "$HOME/aosp"
+
+          repo init \
+            -u https://android.googlesource.com/platform/manifest \
+            -b android16-release \
+            --depth=1 \
+            --partial-clone \
+            --clone-filter=blob:limit=10M \
+            --no-tags
+
+          echo
+          echo "===== REPO INITIALIZED ====="
+          test -d .repo
+          echo ".repo: PRESENT"
+
+          echo
+          echo "===== DISK ====="
+          df -h "$HOME"
+
+      - name: Verify AOSP manifest
+        shell: bash
+        run: |
+          set -e
+
+          cd "$HOME/aosp"
+
+          echo "===== REPO STATE ====="
+          test -d .repo
+          echo ".repo: PRESENT"
+
+          test -f .repo/manifest.xml
+          echo ".repo/manifest.xml: PRESENT"
+
+          echo
+          echo "===== MANIFEST PROJECT COUNT ====="
+          grep -c '<project ' .repo/manifest.xml || true
+
+          echo
+          echo "===== AOSP BRANCH ====="
+          grep -E 'revision=' .repo/manifest.xml | head -1 || true
+
+          echo
+          echo "===== RESULT ====="
+          echo "Android 16 AOSP manifest initialization succeeded."
+          echo "Full source sync is intentionally NOT performed in this stage."

@@ -1,0 +1,1 @@
+/data/data/com.termux/files/home/AI14ROM_X6711/ota_tool/full_build/gen/xz.h

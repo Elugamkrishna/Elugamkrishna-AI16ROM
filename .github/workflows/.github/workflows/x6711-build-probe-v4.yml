@@ -1,0 +1,311 @@
+name: AI16ROM X6711 Build Probe V4
+
+'on':
+  workflow_dispatch:
+
+jobs:
+  bootstrap:
+    name: X6711 x86_64 AOSP Build Probe
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout AI16ROM
+        uses: actions/checkout@v4
+
+      - name: Runner and toolchain check
+        shell: bash
+        run: |
+          set -exo pipefail
+
+          echo "===== X86_64 AOSP BUILD HOST ====="
+          uname -a
+          uname -m
+          nproc
+          free -h
+          df -h /
+
+          echo "===== JAVA ====="
+          java -version
+
+          echo "===== NINJA ====="
+          ninja --version
+
+          echo "===== GO ====="
+          go version
+
+      - name: Install repo launcher
+        shell: bash
+        run: |
+          set -exo pipefail
+
+          mkdir -p "$HOME/bin"
+
+          curl -fsSL \
+            https://storage.googleapis.com/git-repo-downloads/repo \
+            -o "$HOME/bin/repo"
+
+          chmod +x "$HOME/bin/repo"
+          echo "$HOME/bin" >> "$GITHUB_PATH"
+
+          "$HOME/bin/repo" --version
+
+      - name: Initialize AOSP Android 16
+        shell: bash
+        run: |
+          set -exo pipefail
+
+          mkdir -p "$HOME/aosp"
+          cd "$HOME/aosp"
+
+          repo init \
+            -u https://android.googlesource.com/platform/manifest \
+            -b android16-release \
+            --depth=1 \
+            --partial-clone \
+            --clone-filter=blob:limit=10M \
+            --no-tags
+
+          test -f .repo/manifest.xml
+
+          echo "===== AOSP INIT PASS ====="
+
+      - name: Sync AOSP Soong dependencies
+        shell: bash
+        run: |
+          set -exo pipefail
+
+          cd "$HOME/aosp"
+
+          repo sync \
+            --current-branch \
+            --no-tags \
+            --optimized-fetch \
+            --prune \
+            -j2 \
+            build/soong \
+            build/make \
+            build/blueprint \
+            build/release \
+            external/golang-protobuf \
+            external/starlark-go \
+            prebuilts/bazel/common \
+            prebuilts/build-tools \
+            toolchain/pgo-profiles
+
+          echo "===== SOURCE CHECK ====="
+
+          test -f build/soong/soong_ui.bash
+          test -f build/make/core/main.mk
+          test -f build/release/release_config_map.textproto
+          test -f build/blueprint/microfactory/microfactory.bash
+          test -f build/blueprint/microfactory/microfactory.go
+
+          test -d external/golang-protobuf
+          test -d external/golang-protobuf/proto
+          test -d external/starlark-go
+          test -d prebuilts/bazel/common
+
+          test -x prebuilts/build-tools/linux-x86/bin/ckati
+
+          test -f toolchain/pgo-profiles/sampling/afdo_profiles.mk
+
+          echo "build/soong                    : PASS"
+          echo "build/make                     : PASS"
+          echo "build/release                  : PASS"
+          echo "build/blueprint                : PASS"
+          echo "external/golang-protobuf      : PASS"
+          echo "external/golang-protobuf/proto : PASS"
+          echo "external/starlark-go           : PASS"
+          echo "prebuilts/bazel/common         : PASS"
+          echo "ckati linux-x86                : PASS"
+          echo "toolchain/pgo-profiles         : PASS"
+
+      - name: Integrate AI16ROM X6711 device tree
+        shell: bash
+        run: |
+          set -exo pipefail
+
+          echo "===== AI16ROM X6711 SOURCE INTEGRATION ====="
+
+          DEVICE_SRC="$GITHUB_WORKSPACE/device/infinix/X6711"
+          VENDOR_SRC="$GITHUB_WORKSPACE/vendor/infinix/X6711"
+          DEVICE_DST="$HOME/aosp/device/infinix/X6711"
+          VENDOR_DST="$HOME/aosp/vendor/infinix/X6711"
+
+          test -f "$DEVICE_SRC/AndroidProducts.mk"
+          test -f "$DEVICE_SRC/aosp_X6711.mk"
+          test -f "$DEVICE_SRC/device.mk"
+          test -f "$DEVICE_SRC/BoardConfig.mk"
+
+          mkdir -p "$HOME/aosp/device/infinix"
+          mkdir -p "$HOME/aosp/vendor/infinix"
+
+          rm -rf "$DEVICE_DST"
+          rm -rf "$VENDOR_DST"
+
+          cp -a "$DEVICE_SRC" "$HOME/aosp/device/infinix/"
+
+          if test -f "$VENDOR_SRC/X6711-vendor.mk"; then
+            echo "===== REAL X6711 VENDOR TREE FOUND ====="
+
+            cp -a "$VENDOR_SRC" "$HOME/aosp/vendor/infinix/"
+
+            test -f "$VENDOR_DST/X6711-vendor.mk"
+
+            echo "vendor/infinix/X6711 : REAL SOURCE"
+
+          else
+            echo "===== X6711 VENDOR TREE NOT TRACKED ====="
+            echo "Creating bootstrap-only vendor makefile."
+
+            mkdir -p "$VENDOR_DST"
+
+            printf '%s\n' \
+              'LOCAL_PATH := vendor/infinix/X6711' \
+              '' \
+              '# AI16ROM X6711 VENDOR BOOTSTRAP' \
+              '# Real proprietary V840 vendor blobs must be provisioned separately.' \
+              '' \
+              'ifneq ($(wildcard $(LOCAL_PATH)/proprietary/*),)' \
+              'PRODUCT_COPY_FILES += $(call find-copy-subdir-files,*,$(LOCAL_PATH)/proprietary,$(TARGET_COPY_OUT_VENDOR))' \
+              'endif' \
+              > "$VENDOR_DST/X6711-vendor.mk"
+
+            test -f "$VENDOR_DST/X6711-vendor.mk"
+
+            echo "vendor/infinix/X6711 : BOOTSTRAP ONLY"
+          fi
+
+          echo "===== X6711 DEVICE TREE PASS ====="
+
+          test -f "$DEVICE_DST/AndroidProducts.mk"
+          test -f "$DEVICE_DST/aosp_X6711.mk"
+          test -f "$DEVICE_DST/device.mk"
+          test -f "$DEVICE_DST/BoardConfig.mk"
+          test -f "$VENDOR_DST/X6711-vendor.mk"
+
+          echo "device/infinix/X6711 : PASS"
+          echo "vendor/infinix/X6711/X6711-vendor.mk : PASS"
+
+      - name: Bootstrap official Go AMD64
+        shell: bash
+        run: |
+          set -exo pipefail
+
+          cd "$HOME/aosp"
+
+          GO_VERSION="1.24.13"
+          GO_ARCHIVE="go1.24.13.linux-amd64.tar.gz"
+          GO_URL="https://go.dev/dl/${GO_ARCHIVE}"
+          GO_SHA256="1fc94b57134d51669c72173ad5d49fd62afb0f1db9bf3f798fd98ee423f8d730"
+
+          echo "===== DOWNLOAD OFFICIAL GO AMD64 ====="
+
+          curl -fL \
+            "$GO_URL" \
+            -o "$HOME/$GO_ARCHIVE"
+
+          echo "${GO_SHA256}  $HOME/$GO_ARCHIVE" | sha256sum -c -
+
+          echo "===== GO CHECKSUM PASS ====="
+
+          rm -rf prebuilts/go/linux-x86
+          mkdir -p prebuilts/go/linux-x86
+
+          tar \
+            -xzf "$HOME/$GO_ARCHIVE" \
+            --strip-components=1 \
+            -C prebuilts/go/linux-x86
+
+          export GOROOT="$HOME/aosp/prebuilts/go/linux-x86"
+          export PATH="$GOROOT/bin:$PATH"
+
+          echo "===== GO VERSION ====="
+          "$GOROOT/bin/go" version
+
+          echo "===== INSTALL STANDARD LIBRARY ARCHIVES ====="
+
+          GODEBUG=installgoroot=all \
+            "$GOROOT/bin/go" install std
+
+          echo "===== GO STANDARD LIBRARY CHECK ====="
+
+          test -f "$GOROOT/pkg/linux_amd64/go/token.a"
+          test -f "$GOROOT/pkg/linux_amd64/io.a"
+          test -f "$GOROOT/pkg/linux_amd64/io/ioutil.a"
+
+          echo "===== GO STANDARD LIBRARY PASS ====="
+
+      - name: Verify X6711 product configuration
+        shell: bash
+        run: |
+          set -exo pipefail
+
+          cd "$HOME/aosp"
+
+          echo "===== X6711 PRODUCT CONFIGURATION ====="
+
+          test -f device/infinix/X6711/AndroidProducts.mk
+          test -f device/infinix/X6711/aosp_X6711.mk
+          test -f device/infinix/X6711/device.mk
+          test -f device/infinix/X6711/BoardConfig.mk
+          test -f vendor/infinix/X6711/X6711-vendor.mk
+
+          echo "===== PRODUCT REFERENCES ====="
+
+          grep -n "aosp_X6711" \
+            device/infinix/X6711/AndroidProducts.mk
+
+          grep -n "device/infinix/X6711/device.mk" \
+            device/infinix/X6711/aosp_X6711.mk
+
+          grep -n "vendor/infinix/X6711/X6711-vendor.mk" \
+            device/infinix/X6711/aosp_X6711.mk
+
+          echo "===== X6711 PRODUCT CONFIGURATION PASS ====="
+
+      - name: Soong bootstrap and X6711 lunch
+        shell: bash
+        run: |
+          set -exo pipefail
+
+          cd "$HOME/aosp"
+
+          export GOROOT="$HOME/aosp/prebuilts/go/linux-x86"
+          export PATH="$GOROOT/bin:$PATH"
+
+          echo "===== ENVSETUP ====="
+          source build/envsetup.sh
+
+          echo "===== LUNCH X6711 ====="
+          lunch aosp_X6711-bp2a-userdebug
+
+          echo "===== SOONG BOOTSTRAP / BUILD VARS ====="
+
+          build/soong/soong_ui.bash \
+            --dumpvars-mode \
+            --vars="COMMON_LUNCH_CHOICES HOST_PREBUILT_TAG TARGET_BUILD_VARIANT TARGET_PRODUCT print report_config" \
+            --abs-vars="ANDROID_CLANG_PREBUILTS ANDROID_JAVA_HOME ANDROID_JAVA_TOOLCHAIN HOST_OUT HOST_OUT_EXECUTABLES HOST_OUT_TESTCASES OUT_DIR PRODUCT_OUT SOONG_HOST_OUT SOONG_HOST_OUT_EXECUTABLES TARGET_OUT_TESTCASES print" \
+            --var-prefix=var_cache_ \
+            --abs-var-prefix=abs_var_cache_
+
+          echo "===== SOONG BOOTSTRAP PASS ====="
+
+      - name: Ninja compile probe - libbase
+        shell: bash
+        run: |
+          set -exo pipefail
+
+          cd "$HOME/aosp"
+
+          export GOROOT="$HOME/aosp/prebuilts/go/linux-x86"
+          export PATH="$GOROOT/bin:$PATH"
+
+          echo "===== RE-LOAD AOSP BUILD ENV ====="
+          source build/envsetup.sh
+          lunch aosp_X6711-bp2a-userdebug
+
+          echo "===== NINJA COMPILE PROBE: libbase ====="
+          m -j2 libbase
+
+          echo "===== NINJA COMPILE PROBE PASS ====="
