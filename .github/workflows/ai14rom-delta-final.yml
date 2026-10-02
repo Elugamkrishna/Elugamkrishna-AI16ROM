@@ -9,33 +9,11 @@
           rm -rf protobuf_build
           rm -rf deps/protobuf_install
 
-          echo
-          echo "========================================"
-          echo "CLONE PROTOBUF v35.1"
-          echo "========================================"
-
           git clone \
             --depth=1 \
             --branch v35.1 \
             https://github.com/protocolbuffers/protobuf.git \
             deps/protobuf
-
-          cd deps/protobuf
-
-          echo
-          echo "PROTOBUF COMMIT:"
-          git rev-parse HEAD
-
-          echo
-          echo "PROTOBUF TAG:"
-          git describe --tags --always
-
-          cd ../..
-
-          echo
-          echo "========================================"
-          echo "CONFIGURE PROTOBUF v35.1"
-          echo "========================================"
 
           cmake \
             -S deps/protobuf \
@@ -48,65 +26,27 @@
             -Dprotobuf_BUILD_PROTOC_BINARIES=ON \
             -DCMAKE_INSTALL_PREFIX="$PWD/deps/protobuf_install"
 
-          echo
-          echo "========================================"
-          echo "BUILD PROTOBUF v35.1"
-          echo "========================================"
-
           cmake \
             --build protobuf_build \
             --parallel 2
-
-          echo
-          echo "========================================"
-          echo "INSTALL PROTOBUF v35.1"
-          echo "========================================"
 
           cmake \
             --build protobuf_build \
             --target install
 
-          echo
-          echo "========================================"
-          echo "VERIFY PROTOBUF 7.35.1"
-          echo "========================================"
-
-          test -f \
-            deps/protobuf_install/include/google/protobuf/runtime_version.h
-
-          test -x \
-            deps/protobuf_install/bin/protoc
-
-          test -f \
-            deps/protobuf_install/lib/libprotobuf.a
-
-          echo
-          echo "PROTOC:"
+          echo "=== PROTOBUF VERSION ==="
 
           deps/protobuf_install/bin/protoc --version
 
-          deps/protobuf_install/bin/protoc --version | \
-            grep -q "35.1"
+          deps/protobuf_install/bin/protoc --version | grep -q "35.1"
 
-          echo
-          echo "RUNTIME VERSION:"
-
-          grep -n \
-            "PROTOBUF_VERSION" \
-            deps/protobuf_install/include/google/protobuf/runtime_version.h \
-            | head -10
-
-          grep -q \
-            "7035001" \
+          test -f \
             deps/protobuf_install/include/google/protobuf/runtime_version.h
 
-          echo
-          echo "========================================"
-          echo "PROTOBUF 7.35.1 MATCH: OK"
-          echo "========================================"
-
-          echo
-          echo "LIBPROTOBUF:"
-
-          ls -lh \
+          test -f \
             deps/protobuf_install/lib/libprotobuf.a
+
+          grep -q "7035001" \
+            deps/protobuf_install/include/google/protobuf/runtime_version.h
+
+          echo "PROTOBUF 7.35.1 MATCH: OK"
