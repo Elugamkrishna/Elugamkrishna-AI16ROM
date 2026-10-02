@@ -1,3 +1,8 @@
+cd "$HOME/AI14ROM_GITHUB_LIGHT" || exit 1
+
+mkdir -p .github/workflows
+
+cat > .github/workflows/delta-generator.yml <<'YAML'
 name: AI14ROM Delta Generator
 
 on:
@@ -16,37 +21,32 @@ jobs:
     runs-on: ubuntu-24.04
 
     steps:
+
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          submodules: recursive
           fetch-depth: 1
 
-      - name: Check AI14ROM OTA source
+      - name: Repository verification
         shell: bash
         run: |
-          set -e
+          set -eux
 
           echo "=== REPOSITORY ==="
           pwd
-          ls -la
+          git rev-parse HEAD
 
           echo
-          echo "=== OTA TOOL ==="
+          echo "=== OTA SOURCE ==="
+          test -d ota_tool
+          test -f ota_tool/full_build/CMakeLists.txt
+          test -f ota_tool/update_engine/scripts/brillo_update_payload
 
-          if [ ! -d "ota_tool" ]; then
-            echo "ERROR: ota_tool/ is not present in this repository."
-            echo "Upload ~/AI14ROM_X6711/ota_tool first."
-            exit 10
-          fi
+          echo "ota_tool OK"
 
-          if [ ! -f "ota_tool/full_build/CMakeLists.txt" ]; then
-            echo "ERROR: ota_tool/full_build/CMakeLists.txt missing."
-            exit 11
-          fi
-
-          echo "ota_tool found."
-          ls -lh ota_tool/full_build/CMakeLists.txt
+          echo
+          echo "=== WORKFLOW COMMIT ==="
+          git log -1 --oneline
 
       - name: Install Ubuntu build dependencies
         shell: bash
@@ -67,6 +67,9 @@ jobs:
             wget \
             unzip \
             zip \
+            rsync \
+            python3 \
+            python3-pip \
             protobuf-compiler \
             libprotobuf-dev \
             libssl-dev \
@@ -76,174 +79,14 @@ jobs:
             zlib1g-dev \
             libbz2-dev \
             libbrotli-dev \
-            python3
-
-      - name: Inspect OTA dependencies
-        shell: bash
-        run: |
-          set -e
-
-          cd ota_tool
-
-          echo "=== DEPENDENCY DIRECTORIES ==="
-
-          for d in \
-            deps/libbase \
-            deps/libchrome \
-            deps/libbrillo \
-            deps/external_avb \
-            deps/gflags \
-            deps/googletest \
-            deps/puffin \
-            deps/bsdiff \
-            deps/zucchini \
-            deps/erofs-utils \
-            deps/lzma \
-            deps/system_core \
-            deps/system_extras
-          do
-            if [ -d "$d" ]; then
-              echo "OK   $d"
-            else
-              echo "MISS $d"
-            fi
-          done
-
-          echo
-          echo "=== AVB CRYPTO HEADER ==="
-
-          find deps/external_avb \
-            -type f \
-            \( -name "avb_crypto_ops_impl.h" \
-               -o -name "is_boringssl.h" \) \
-            -print || true
-
-      - name: Prepare host compatibility fixes
-        shell: bash
-        run: |
-          set -e
-
-          cd ota_tool
-
-          echo "=== EROFS HOST CONFIG ==="
-
-          mkdir -p deps/erofs-utils/include
-
-          if [ ! -f deps/erofs-utils/include/config.h ]; then
-            cat > deps/erofs-utils/include/config.h <<'EOF'
-          #pragma once
-
-          #define PACKAGE_VERSION "1.8"
-          #define HAVE_MEMRCHR 1
-          #define HAVE_MKSTEMP 1
-          #define HAVE_FTRUNCATE 1
-          #define HAVE_PREAD 1
-          #define HAVE_PWRITE 1
-          #define HAVE_POSIX_FALLOCATE 1
-          EOF
-          fi
-
-          echo
-          echo "=== EROFS makedev COMPATIBILITY ==="
-
-          NAMEI="deps/erofs-utils/lib/namei.c"
-
-          if [ -f "$NAMEI" ]; then
-            if ! grep -q "AI14ROM_MAKEDEV_FALLBACK" "$NAMEI"; then
-              sed -i '1i\
-          #ifndef AI14ROM_MAKEDEV_FALLBACK\
-          #define AI14ROM_MAKEDEV_FALLBACK\
-          #include <sys/sysmacros.h>\
-          #ifndef makedev\
-          #define makedev(major, minor) ((((unsigned long long)(major)) << 8) | ((unsigned long long)(minor) & 0xffULL))\
-          #endif\
-          #endif' "$NAMEI"
-            fi
-          fi
-
-          echo
-          echo "=== IT0A SHIM ==="
-
-          mkdir -p shim
-
-          cat > shim/itoa_fix.h <<'EOF'
-          #pragma once
-
-          #include <cstdint>
-          #include <cstddef>
-
-          namespace base {
-          namespace debug {
-          namespace internal {
-
-          inline char* itoa_r(
-              intptr_t value,
-              char* buffer,
-              size_t buffer_size,
-              int radix,
-              int padding) {
-
-            if (!buffer || buffer_size == 0 ||
-                radix < 2 || radix > 36) {
-              return buffer;
-            }
-
-            char tmp[sizeof(intptr_t) * 8 + 3];
-            size_t i = 0;
-
-            bool negative = false;
-            uintptr_t v;
-
-            if (value < 0 && radix == 10) {
-              negative = true;
-              v = static_cast<uintptr_t>(-(value + 1));
-              v += 1;
-            } else {
-              v = static_cast<uintptr_t>(value);
-            }
-
-            do {
-              unsigned digit =
-                  static_cast<unsigned>(v % static_cast<uintptr_t>(radix));
-
-              tmp[i++] =
-                  digit < 10
-                      ? static_cast<char>('0' + digit)
-                      : static_cast<char>('a' + digit - 10);
-
-              v /= static_cast<uintptr_t>(radix);
-
-            } while (v && i < sizeof(tmp) - 1);
-
-            while (i < static_cast<size_t>(padding) &&
-                   i < sizeof(tmp) - 1) {
-              tmp[i++] = '0';
-            }
-
-            size_t out = 0;
-
-            if (negative && out + 1 < buffer_size) {
-              buffer[out++] = '-';
-            }
-
-            while (i && out + 1 < buffer_size) {
-              buffer[out++] = tmp[--i];
-            }
-
-            buffer[out] = '\0';
-
-            return buffer;
-          }
-
-          } // namespace internal
-          } // namespace debug
-          } // namespace base
-          EOF
+            libgflags-dev \
+            libgtest-dev
 
       - name: Bootstrap OTA dependencies
         shell: bash
         run: |
-          set -eux
+          set -euxo pipefail
+
           cd ota_tool
 
           echo "=== PREPARE OTA DEPENDENCIES ==="
@@ -254,7 +97,12 @@ jobs:
             name="$1"
             url="$2"
 
-            if [ -d "deps/$name" ] && [ "$(find "deps/$name" -mindepth 1 -maxdepth 1 -print -quit)" ]; then
+            echo
+            echo "=== DEPENDENCY: $name ==="
+            echo "URL: $url"
+
+            if [ -d "deps/$name" ] && \
+               [ -n "$(find "deps/$name" -mindepth 1 -maxdepth 1 -print -quit 2>/dev/null)" ]; then
               echo "Dependency already present: $name"
               return 0
             fi
@@ -263,7 +111,8 @@ jobs:
               echo "Existing git dependency: $name"
               git -C "deps/$name" fetch --depth=1 origin || true
             else
-              echo "Cloning missing dependency: $name"
+              echo "Cloning: $name"
+              rm -rf "deps/$name"
               git clone --depth=1 "$url" "deps/$name"
             fi
           }
@@ -308,14 +157,142 @@ jobs:
             https://android.googlesource.com/platform/external/lzma
 
           echo
+          echo "=== FEC COMPATIBILITY PATH ==="
+
+          if [ -d "deps/fec" ] && \
+             [ -n "$(find deps/fec -mindepth 1 -maxdepth 1 -print -quit 2>/dev/null)" ]; then
+            echo "deps/fec already present"
+          elif [ -d "deps/system_extras/libfec" ]; then
+            ln -sfn system_extras/libfec deps/fec
+            echo "Created deps/fec -> system_extras/libfec"
+          else
+            echo "WARNING: system_extras/libfec not present"
+          fi
+
+          echo
+          echo "=== DEPENDENCY INVENTORY ==="
+
+          for d in \
+            libbase \
+            libchrome \
+            libbrillo \
+            system_core \
+            system_extras \
+            external_avb \
+            gflags \
+            googletest \
+            puffin \
+            bsdiff \
+            zucchini \
+            erofs-utils \
+            lzma
+          do
+            if [ -d "deps/$d" ]; then
+              echo "OK   deps/$d"
+            else
+              echo "MISS deps/$d"
+              exit 20
+            fi
+          done
+
+          echo
+          echo "=== CRITICAL SOURCES ==="
+
+          test -d deps/external_avb/libavb
+          test -d deps/puffin
+          test -d deps/zucchini
+          test -d deps/erofs-utils
+          test -d deps/lzma
+
+          echo "Critical dependencies OK"
+
+          echo
           echo "=== DEPENDENCIES READY ==="
           find deps -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort
 
+      - name: Prepare EROFS host compatibility
+        shell: bash
+        run: |
+          set -euxo pipefail
+
+          cd ota_tool
+
+          echo "=== EROFS CONFIG ==="
+
+          mkdir -p deps/erofs-utils/include
+
+          if [ ! -f deps/erofs-utils/include/config.h ]; then
+            cat > deps/erofs-utils/include/config.h <<'EOF'
+#pragma once
+
+#define PACKAGE_VERSION "1.8"
+#define HAVE_MEMRCHR 1
+#define HAVE_MKSTEMP 1
+#define HAVE_FTRUNCATE 1
+#define HAVE_PREAD 1
+#define HAVE_PWRITE 1
+#define HAVE_POSIX_FALLOCATE 1
+EOF
+          fi
+
+          echo "ERofs host config ready"
+
+          echo
+          echo "=== EROFS NAMEI COMPATIBILITY ==="
+
+          NAMEI="deps/erofs-utils/lib/namei.c"
+
+          if [ -f "$NAMEI" ]; then
+            if ! grep -q "AI14ROM_MAKEDEV_FALLBACK" "$NAMEI"; then
+              sed -i '1i\
+#ifndef AI14ROM_MAKEDEV_FALLBACK\
+#define AI14ROM_MAKEDEV_FALLBACK\
+#include <sys/sysmacros.h>\
+#ifndef makedev\
+#define makedev(major, minor) ((((unsigned long long)(major)) << 8) | ((unsigned long long)(minor) & 0xffULL))\
+#endif\
+#endif' "$NAMEI"
+            fi
+          fi
+
+          echo "ERofs compatibility ready"
+
+      - name: Prepare host source compatibility
+        shell: bash
+        run: |
+          set -euxo pipefail
+
+          cd ota_tool/full_build
+
+          echo "=== CHECK CMAKE ==="
+
+          test -f CMakeLists.txt
+
+          echo
+          echo "=== REMOVE OLD TERMUX PATHS ==="
+
+          sed -i \
+            's#"/data/data/com.termux/files/home/AI14ROM_X6711/ota_tool/deps/external_avb/libavb/boringssl"#"${CMAKE_SOURCE_DIR}/../deps/external_avb/libavb/boringssl"#g' \
+            CMakeLists.txt || true
+
+          sed -i \
+            's#include_directories("IR")##g' \
+            CMakeLists.txt || true
+
+          echo
+          echo "=== CHECK BORINGSSL PATH ==="
+
+          if grep -q '/data/data/com.termux' CMakeLists.txt; then
+            echo "ERROR: Termux path still exists in CMakeLists.txt"
+            exit 30
+          fi
+
+          echo "CMake portability check OK"
 
       - name: Configure delta_generator
         shell: bash
         run: |
-          set -e
+          set -euxo pipefail
 
           cd ota_tool/full_build
 
@@ -325,7 +302,9 @@ jobs:
             -S . \
             -B clean_build \
             -G Ninja \
-            -DCMAKE_BUILD_TYPE=Release
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_C_COMPILER=clang \
+            -DCMAKE_CXX_COMPILER=clang++
 
       - name: Build delta_generator
         shell: bash
@@ -334,6 +313,8 @@ jobs:
 
           cd ota_tool/full_build
 
+          echo "=== BUILD delta_generator ==="
+
           cmake \
             --build clean_build \
             --target delta_generator \
@@ -341,27 +322,32 @@ jobs:
             2>&1 | tee delta_generator_build.log
 
       - name: Verify delta_generator
+        if: success()
         shell: bash
         run: |
-          set -e
+          set -euxo pipefail
 
           BIN="ota_tool/full_build/clean_build/delta_generator"
 
           echo "=== FINAL VERIFICATION ==="
 
-          if [ ! -x "$BIN" ]; then
-            echo "ERROR: delta_generator was not built."
-            exit 20
-          fi
+          test -x "$BIN"
 
           echo
           echo "SUCCESS"
           ls -lh "$BIN"
+
+          echo
+          echo "FILE"
           file "$BIN"
 
           echo
           echo "SHA256"
           sha256sum "$BIN"
+
+          echo
+          echo "HELP"
+          "$BIN" --help || true
 
       - name: Upload delta_generator
         if: success()
@@ -382,5 +368,33 @@ jobs:
           path: |
             ota_tool/full_build/delta_generator_build.log
             ota_tool/full_build/clean_build/CMakeCache.txt
+            ota_tool/full_build/clean_build/CMakeFiles/
           if-no-files-found: ignore
           retention-days: 14
+YAML
+
+echo "=== YAML WRITTEN ==="
+wc -l .github/workflows/delta-generator.yml
+
+echo
+echo "=== CRITICAL URLS ==="
+grep -A1 'clone_or_update puffin' .github/workflows/delta-generator.yml
+grep -A1 'clone_or_update zucchini' .github/workflows/delta-generator.yml
+grep -A1 'clone_or_update lzma' .github/workflows/delta-generator.yml
+
+echo
+echo "=== GIT STATUS ==="
+git status --short
+
+echo
+echo "=== COMMIT ==="
+git add .github/workflows/delta-generator.yml
+git commit -m "Fix complete AI14ROM delta generator workflow"
+
+echo
+echo "=== PUSH ==="
+git push origin main
+
+echo
+echo "=== REMOTE COMMIT ==="
+git ls-remote origin refs/heads/main
