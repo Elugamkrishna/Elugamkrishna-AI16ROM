@@ -1,227 +1,3 @@
-name: AI14ROM Delta Generator Final
-
-on:
-  workflow_dispatch:
-
-permissions:
-  contents: read
-
-jobs:
-  build:
-    name: Build delta_generator
-    runs-on: ubuntu-24.04
-
-    steps:
-
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 1
-
-      - name: Verify repository
-        shell: bash
-        run: |
-          set -eux
-
-          echo "========================================"
-          echo " AI14ROM DELTA GENERATOR FINAL"
-          echo "========================================"
-
-          echo
-          echo "=== COMMIT ==="
-          git rev-parse HEAD
-          git log -1 --oneline
-
-          echo
-          echo "=== OTA SOURCE ==="
-
-          test -d ota_tool
-          test -f ota_tool/full_build/CMakeLists.txt
-          test -f ota_tool/update_engine/scripts/brillo_update_payload
-
-          echo "OTA source OK"
-
-      - name: Install build dependencies
-        shell: bash
-        run: |
-          set -eux
-
-          sudo apt-get update
-
-          sudo apt-get install -y \
-            build-essential \
-            clang \
-            lld \
-            cmake \
-            ninja-build \
-            pkg-config \
-            git \
-            curl \
-            wget \
-            rsync \
-            unzip \
-            zip \
-            python3 \
-            python3-pip \
-            libssl-dev \
-            liblz4-dev \
-            liblzma-dev \
-            libzstd-dev \
-            zlib1g-dev \
-            libbz2-dev \
-            libbrotli-dev \
-            libgflags-dev \
-            libgtest-dev
-
-          echo
-          echo "Build packages installed"
-
-      - name: Prepare OTA dependencies
-        shell: bash
-        run: |
-          set -euxo pipefail
-
-          cd ota_tool
-
-          mkdir -p deps
-
-          clone_dep() {
-            name="$1"
-            url="$2"
-
-            echo
-            echo "========================================"
-            echo "DEPENDENCY: $name"
-            echo "$url"
-            echo "========================================"
-
-            if [ -d "deps/$name/.git" ]; then
-              echo "Already cloned: $name"
-              return 0
-            fi
-
-            if [ -d "deps/$name" ] && \
-               [ -n "$(find "deps/$name" -mindepth 1 -print -quit 2>/dev/null)" ]; then
-              echo "Already present: $name"
-              return 0
-            fi
-
-            rm -rf "deps/$name"
-
-            git clone \
-              --depth=1 \
-              "$url" \
-              "deps/$name"
-          }
-
-          clone_dep libbase \
-            https://android.googlesource.com/platform/system/libbase
-
-          clone_dep libchrome \
-            https://android.googlesource.com/platform/external/libchrome
-
-          clone_dep libbrillo \
-            https://android.googlesource.com/platform/external/libbrillo
-
-          clone_dep system_core \
-            https://android.googlesource.com/platform/system/core
-
-          clone_dep system_extras \
-            https://android.googlesource.com/platform/system/extras
-
-          clone_dep external_avb \
-            https://android.googlesource.com/platform/external/avb
-
-          clone_dep gflags \
-            https://android.googlesource.com/platform/external/gflags
-
-          clone_dep googletest \
-            https://android.googlesource.com/platform/external/googletest
-
-          clone_dep puffin \
-            https://android.googlesource.com/platform/external/puffin
-
-          clone_dep bsdiff \
-            https://android.googlesource.com/platform/external/bsdiff
-
-          clone_dep zucchini \
-            https://android.googlesource.com/platform/external/zucchini
-
-          clone_dep erofs-utils \
-            https://android.googlesource.com/platform/external/erofs-utils
-
-          clone_dep lzma \
-            https://android.googlesource.com/platform/external/lzma
-
-          echo
-          echo "========================================"
-          echo "VERIFY DEPENDENCIES"
-          echo "========================================"
-
-          for d in \
-            libbase \
-            libchrome \
-            libbrillo \
-            system_core \
-            system_extras \
-            external_avb \
-            gflags \
-            googletest \
-            puffin \
-            bsdiff \
-            zucchini \
-            erofs-utils \
-            lzma
-          do
-            test -d "deps/$d"
-            echo "OK: deps/$d"
-          done
-
-          test -d deps/external_avb/libavb
-          test -d deps/puffin
-          test -d deps/zucchini
-          test -d deps/erofs-utils
-          test -d deps/lzma
-
-          echo
-          echo "ALL OTA DEPENDENCIES READY"
-
-      - name: Build gflags
-        shell: bash
-        run: |
-          set -euxo pipefail
-
-          cd ota_tool
-
-          rm -rf gflags_build
-          rm -rf deps/gflags_install
-
-          cmake \
-            -S deps/gflags \
-            -B gflags_build \
-            -G Ninja \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DBUILD_SHARED_LIBS=OFF \
-            -DGFLAGS_BUILD_TESTING=OFF \
-            -DCMAKE_INSTALL_PREFIX="$PWD/deps/gflags_install"
-
-          cmake \
-            --build gflags_build \
-            --parallel 2
-
-          cmake \
-            --build gflags_build \
-            --target install
-
-          echo
-          echo "========================================"
-          echo "GFLAGS RESULT"
-          echo "========================================"
-
-          test -f deps/gflags_install/lib/libgflags.a
-
-          ls -lh deps/gflags_install/lib/libgflags.a
-
       - name: Build Protobuf
         shell: bash
         run: |
@@ -235,17 +11,30 @@ jobs:
 
           echo
           echo "========================================"
-          echo "CLONE PROTOBUF"
+          echo "CLONE PROTOBUF v35.1"
           echo "========================================"
 
           git clone \
             --depth=1 \
+            --branch v35.1 \
             https://github.com/protocolbuffers/protobuf.git \
             deps/protobuf
 
+          cd deps/protobuf
+
+          echo
+          echo "PROTOBUF COMMIT:"
+          git rev-parse HEAD
+
+          echo
+          echo "PROTOBUF TAG:"
+          git describe --tags --always
+
+          cd ../..
+
           echo
           echo "========================================"
-          echo "CONFIGURE PROTOBUF"
+          echo "CONFIGURE PROTOBUF v35.1"
           echo "========================================"
 
           cmake \
@@ -261,7 +50,7 @@ jobs:
 
           echo
           echo "========================================"
-          echo "BUILD PROTOBUF"
+          echo "BUILD PROTOBUF v35.1"
           echo "========================================"
 
           cmake \
@@ -270,7 +59,7 @@ jobs:
 
           echo
           echo "========================================"
-          echo "INSTALL PROTOBUF"
+          echo "INSTALL PROTOBUF v35.1"
           echo "========================================"
 
           cmake \
@@ -279,7 +68,7 @@ jobs:
 
           echo
           echo "========================================"
-          echo "VERIFY PROTOBUF"
+          echo "VERIFY PROTOBUF 7.35.1"
           echo "========================================"
 
           test -f \
@@ -292,221 +81,32 @@ jobs:
             deps/protobuf_install/lib/libprotobuf.a
 
           echo
-          echo "runtime_version.h: OK"
+          echo "PROTOC:"
+
+          deps/protobuf_install/bin/protoc --version
+
+          deps/protobuf_install/bin/protoc --version | \
+            grep -q "35.1"
 
           echo
-          echo "PROTOC:"
-          deps/protobuf_install/bin/protoc --version
+          echo "RUNTIME VERSION:"
+
+          grep -n \
+            "PROTOBUF_VERSION" \
+            deps/protobuf_install/include/google/protobuf/runtime_version.h \
+            | head -10
+
+          grep -q \
+            "7035001" \
+            deps/protobuf_install/include/google/protobuf/runtime_version.h
+
+          echo
+          echo "========================================"
+          echo "PROTOBUF 7.35.1 MATCH: OK"
+          echo "========================================"
 
           echo
           echo "LIBPROTOBUF:"
-          ls -lh deps/protobuf_install/lib/libprotobuf.a
 
-      - name: Prepare EROFS
-        shell: bash
-        run: |
-          set -euxo pipefail
-
-          cd ota_tool
-
-          mkdir -p deps/erofs-utils/include
-
-          cat > deps/erofs-utils/include/config.h <<'EOF'
-          #pragma once
-
-          #define PACKAGE_VERSION "1.8"
-          #define HAVE_MEMRCHR 1
-          #define HAVE_MKSTEMP 1
-          #define HAVE_FTRUNCATE 1
-          #define HAVE_PREAD 1
-          #define HAVE_PWRITE 1
-          #define HAVE_POSIX_FALLOCATE 1
-          EOF
-
-          echo "EROFS preparation complete"
-
-      - name: Validate CMake
-        shell: bash
-        run: |
-          set -euxo pipefail
-
-          test -f ota_tool/full_build/CMakeLists.txt
-
-          if grep -n \
-            "/data/data/com.termux/files/home" \
-            ota_tool/full_build/CMakeLists.txt; then
-            echo "ERROR: Termux-specific path found"
-            exit 1
-          fi
-
-          echo
-          echo "=== PUFFIN ==="
-
-          grep -n \
-            "platform/external/puffin" \
-            .github/workflows/ai14rom-delta-final.yml
-
-          echo
-          echo "=== ZUCCHINI ==="
-
-          grep -n \
-            "platform/external/zucchini" \
-            .github/workflows/ai14rom-delta-final.yml
-
-          echo
-          echo "=== LZMA ==="
-
-          grep -n \
-            "platform/external/lzma" \
-            .github/workflows/ai14rom-delta-final.yml
-
-          echo
-          echo "CMake validation OK"
-
-      - name: Configure delta_generator
-        shell: bash
-        run: |
-          set -euxo pipefail
-
-          cd ota_tool/full_build
-
-          rm -rf clean_build
-
-          PROTOBUF_ROOT="$PWD/../deps/protobuf_install"
-          GFLAGS_ROOT="$PWD/../deps/gflags_install"
-
-          echo
-          echo "========================================"
-          echo "FORCE CUSTOM PROTOBUF"
-          echo "========================================"
-
-          test -f \
-            "$PROTOBUF_ROOT/include/google/protobuf/runtime_version.h"
-
-          test -f \
-            "$PROTOBUF_ROOT/lib/libprotobuf.a"
-
-          test -x \
-            "$PROTOBUF_ROOT/bin/protoc"
-
-          echo
-          echo "PROTOBUF HEADER:"
           ls -lh \
-            "$PROTOBUF_ROOT/include/google/protobuf/runtime_version.h"
-
-          echo
-          echo "PROTOBUF LIB:"
-          ls -lh \
-            "$PROTOBUF_ROOT/lib/libprotobuf.a"
-
-          echo
-          echo "PROTOC:"
-          "$PROTOBUF_ROOT/bin/protoc" --version
-
-          export PATH="$PROTOBUF_ROOT/bin:$PATH"
-
-          export CMAKE_PREFIX_PATH="$PROTOBUF_ROOT:$GFLAGS_ROOT"
-
-          echo
-          echo "========================================"
-          echo "CMAKE CONFIGURE"
-          echo "========================================"
-
-          cmake \
-            -S . \
-            -B clean_build \
-            -G Ninja \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_C_COMPILER=clang \
-            -DCMAKE_CXX_COMPILER=clang++ \
-            -DCMAKE_PREFIX_PATH="$PROTOBUF_ROOT;$GFLAGS_ROOT" \
-            -DProtobuf_ROOT="$PROTOBUF_ROOT" \
-            -DProtobuf_DIR="$PROTOBUF_ROOT/lib/cmake/protobuf" \
-            -DProtobuf_INCLUDE_DIR="$PROTOBUF_ROOT/include" \
-            -DProtobuf_LIBRARY="$PROTOBUF_ROOT/lib/libprotobuf.a" \
-            -DProtobuf_LITE_LIBRARY="$PROTOBUF_ROOT/lib/libprotobuf-lite.a" \
-            -DProtobuf_PROTOC_EXECUTABLE="$PROTOBUF_ROOT/bin/protoc"
-
-          echo
-          echo "========================================"
-          echo "VERIFY CMAKE PROTOBUF"
-          echo "========================================"
-
-          grep -Ei \
-            "Protobuf|PROTOBUF" \
-            clean_build/CMakeCache.txt \
-            | head -80 || true
-
-          echo
-          echo "========================================"
-          echo "CMAKE CONFIGURATION COMPLETE"
-          echo "========================================"
-
-      - name: Build delta_generator
-        shell: bash
-        run: |
-          set -o pipefail
-
-          cd ota_tool/full_build
-
-          echo
-          echo "========================================"
-          echo "BUILD delta_generator"
-          echo "========================================"
-
-          cmake \
-            --build clean_build \
-            --target delta_generator \
-            --parallel 2 \
-            2>&1 | tee delta_generator_build.log
-
-      - name: Verify delta_generator
-        if: success()
-        shell: bash
-        run: |
-          set -eux
-
-          BIN="ota_tool/full_build/clean_build/delta_generator"
-
-          test -x "$BIN"
-
-          echo
-          echo "========================================"
-          echo "DELTA GENERATOR SUCCESS"
-          echo "========================================"
-
-          ls -lh "$BIN"
-
-          echo
-          echo "FILE:"
-          file "$BIN"
-
-          echo
-          echo "SHA256:"
-          sha256sum "$BIN"
-
-          echo
-          echo "HELP:"
-          "$BIN" --help || true
-
-      - name: Upload delta_generator
-        if: success()
-        uses: actions/upload-artifact@v4
-        with:
-          name: AI14ROM-delta-generator-final
-          path: |
-            ota_tool/full_build/clean_build/delta_generator
-            ota_tool/full_build/delta_generator_build.log
-          if-no-files-found: error
-          retention-days: 30
-
-      - name: Upload failure log
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: AI14ROM-delta-generator-final-build-log
-          path: |
-            ota_tool/full_build/delta_generator_build.log
-            ota_tool/full_build/clean_build/CMakeCache.txt
-          if-no-files-found: ignore
-          retention-days: 14
+            deps/protobuf_install/lib/libprotobuf.a
