@@ -254,11 +254,16 @@ jobs:
             name="$1"
             url="$2"
 
+            if [ -d "deps/$name" ] && [ "$(find "deps/$name" -mindepth 1 -maxdepth 1 -print -quit)" ]; then
+              echo "Dependency already present: $name"
+              return 0
+            fi
+
             if [ -d "deps/$name/.git" ]; then
-              echo "Existing dependency: $name"
+              echo "Existing git dependency: $name"
               git -C "deps/$name" fetch --depth=1 origin || true
             else
-              echo "Cloning: $name"
+              echo "Cloning missing dependency: $name"
               git clone --depth=1 "$url" "deps/$name"
             fi
           }
