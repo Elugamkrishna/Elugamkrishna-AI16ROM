@@ -1,4 +1,4 @@
-name: AI14ROM Delta Generator v2
+name: AI14ROM Delta Generator Final
 
 on:
   workflow_dispatch:
@@ -12,21 +12,34 @@ jobs:
     runs-on: ubuntu-24.04
 
     steps:
+
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 1
 
-      - name: Show revision
+      - name: Verify repository
         shell: bash
         run: |
           set -eux
-          echo "=== AI14ROM DELTA GENERATOR v2 ==="
-          echo "Commit:"
+
+          echo "========================================"
+          echo " AI14ROM DELTA GENERATOR FINAL"
+          echo "========================================"
+
+          echo
+          echo "=== COMMIT ==="
           git rev-parse HEAD
           git log -1 --oneline
-          echo "Repository:"
-          pwd
+
+          echo
+          echo "=== OTA SOURCE ==="
+
+          test -d ota_tool
+          test -f ota_tool/full_build/CMakeLists.txt
+          test -f ota_tool/update_engine/scripts/brillo_update_payload
+
+          echo "OTA source OK"
 
       - name: Install build dependencies
         shell: bash
@@ -49,8 +62,7 @@ jobs:
             unzip \
             zip \
             python3 \
-            protobuf-compiler \
-            libprotobuf-dev \
+            python3-pip \
             libssl-dev \
             liblz4-dev \
             liblzma-dev \
@@ -61,12 +73,16 @@ jobs:
             libgflags-dev \
             libgtest-dev
 
+          echo
+          echo "Build packages installed"
+
       - name: Prepare OTA dependencies
         shell: bash
         run: |
           set -euxo pipefail
 
           cd ota_tool
+
           mkdir -p deps
 
           clone_dep() {
@@ -74,8 +90,10 @@ jobs:
             url="$2"
 
             echo
-            echo "=== $name ==="
+            echo "========================================"
+            echo "DEPENDENCY: $name"
             echo "$url"
+            echo "========================================"
 
             if [ -d "deps/$name/.git" ]; then
               echo "Already cloned: $name"
@@ -89,7 +107,11 @@ jobs:
             fi
 
             rm -rf "deps/$name"
-            git clone --depth=1 "$url" "deps/$name"
+
+            git clone \
+              --depth=1 \
+              "$url" \
+              "deps/$name"
           }
 
           clone_dep libbase \
@@ -132,7 +154,9 @@ jobs:
             https://android.googlesource.com/platform/external/lzma
 
           echo
-          echo "=== VERIFY DEPENDENCIES ==="
+          echo "========================================"
+          echo "VERIFY DEPENDENCIES"
+          echo "========================================"
 
           for d in \
             libbase \
@@ -160,7 +184,123 @@ jobs:
           test -d deps/lzma
 
           echo
-          echo "=== DEPENDENCIES READY ==="
+          echo "ALL OTA DEPENDENCIES READY"
+
+      - name: Build gflags
+        shell: bash
+        run: |
+          set -euxo pipefail
+
+          cd ota_tool
+
+          rm -rf gflags_build
+          rm -rf deps/gflags_install
+
+          cmake \
+            -S deps/gflags \
+            -B gflags_build \
+            -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DBUILD_SHARED_LIBS=OFF \
+            -DGFLAGS_BUILD_TESTING=OFF \
+            -DCMAKE_INSTALL_PREFIX="$PWD/deps/gflags_install"
+
+          cmake \
+            --build gflags_build \
+            --parallel 2
+
+          cmake \
+            --build gflags_build \
+            --target install
+
+          echo
+          echo "========================================"
+          echo "GFLAGS RESULT"
+          echo "========================================"
+
+          test -f deps/gflags_install/lib/libgflags.a
+
+          ls -lh deps/gflags_install/lib/libgflags.a
+
+      - name: Build matching Protobuf
+        shell: bash
+        run: |
+          set -euxo pipefail
+
+          cd ota_tool
+
+          rm -rf deps/protobuf
+          rm -rf protobuf_build
+          rm -rf deps/protobuf_install
+
+          echo
+          echo "========================================"
+          echo "CLONE PROTOBUF"
+          echo "========================================"
+
+          git clone \
+            --depth=1 \
+            https://github.com/protocolbuffers/protobuf.git \
+            deps/protobuf
+
+          echo
+          echo "========================================"
+          echo "CONFIGURE PROTOBUF"
+          echo "========================================"
+
+          cmake \
+            -S deps/protobuf \
+            -B protobuf_build \
+            -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -Dprotobuf_BUILD_TESTS=OFF \
+            -Dprotobuf_BUILD_SHARED_LIBS=OFF \
+            -Dprotobuf_BUILD_LIBPROTOC=ON \
+            -Dprotobuf_BUILD_PROTOC_BINARIES=ON \
+            -DCMAKE_INSTALL_PREFIX="$PWD/deps/protobuf_install"
+
+          echo
+          echo "========================================"
+          echo "BUILD PROTOBUF"
+          echo "========================================"
+
+          cmake \
+            --build protobuf_build \
+            --parallel 2
+
+          echo
+          echo "========================================"
+          echo "INSTALL PROTOBUF"
+          echo "========================================"
+
+          cmake \
+            --build protobuf_build \
+            --target install
+
+          echo
+          echo "========================================"
+          echo "VERIFY PROTOBUF"
+          echo "========================================"
+
+          test -f \
+            deps/protobuf_install/include/google/protobuf/runtime_version.h
+
+          test -x \
+            deps/protobuf_install/bin/protoc
+
+          test -f \
+            deps/protobuf_install/lib/libprotobuf.a
+
+          echo
+          echo "runtime_version.h: OK"
+
+          echo
+          echo "protoc:"
+          deps/protobuf_install/bin/protoc --version
+
+          echo
+          echo "libprotobuf:"
+          ls -lh deps/protobuf_install/lib/libprotobuf.a
 
       - name: Prepare EROFS
         shell: bash
@@ -200,70 +340,47 @@ jobs:
 
           echo "EROFS preparation complete"
 
-      - name: Validate source
+      - name: Validate CMake
         shell: bash
         run: |
-          set -eux
+          set -euxo pipefail
 
-          test -d ota_tool
           test -f ota_tool/full_build/CMakeLists.txt
 
-          if grep -n "/data/data/com.termux" ota_tool/full_build/CMakeLists.txt; then
-            echo "ERROR: Termux path found in CMakeLists.txt"
+          echo "=== TERMUX PATH CHECK ==="
+
+          if grep -n \
+            "/data/data/com.termux/files/home" \
+            ota_tool/full_build/CMakeLists.txt; then
+
+            echo "ERROR: Termux-specific path found"
             exit 1
           fi
 
           echo
           echo "=== PUFFIN ==="
-          grep -n "platform/external/puffin" \
-            .github/workflows/ai14rom-delta-v2.yml
+
+          grep -n \
+            "platform/external/puffin" \
+            .github/workflows/ai14rom-delta-final.yml
 
           echo
           echo "=== ZUCCHINI ==="
-          grep -n "platform/external/zucchini" \
-            .github/workflows/ai14rom-delta-v2.yml
+
+          grep -n \
+            "platform/external/zucchini" \
+            .github/workflows/ai14rom-delta-final.yml
 
           echo
           echo "=== LZMA ==="
-          grep -n "platform/external/lzma" \
-            .github/workflows/ai14rom-delta-v2.yml
+
+          grep -n \
+            "platform/external/lzma" \
+            .github/workflows/ai14rom-delta-final.yml
 
           echo
-          echo "Source validation OK"
-      - name: Build gflags
-        shell: bash
-        run: |
-          set -euxo pipefail
+          echo "CMake validation OK"
 
-          cd ota_tool
-
-          rm -rf gflags_build
-          rm -rf deps/gflags_install
-
-          cmake \
-            -S deps/gflags \
-            -B gflags_build \
-            -G Ninja \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DBUILD_SHARED_LIBS=OFF \
-            -DGFLAGS_BUILD_TESTING=OFF \
-            -DCMAKE_INSTALL_PREFIX="$PWD/deps/gflags_install"
-
-          cmake \
-            --build gflags_build \
-            --parallel 2
-
-          cmake \
-            --build gflags_build \
-            --target install
-
-          echo
-          echo "=== GFLAGS RESULT ==="
-
-          test -f deps/gflags_install/lib/libgflags.a
-
-        
-          ls -lh deps/gflags_install/lib/libgflags.a
       - name: Configure delta_generator
         shell: bash
         run: |
@@ -273,13 +390,26 @@ jobs:
 
           rm -rf clean_build
 
+          export PATH="$PWD/../deps/protobuf_install/bin:$PATH"
+
+          export CMAKE_PREFIX_PATH="$PWD/../deps/protobuf_install:$PWD/../deps/gflags_install"
+
           cmake \
             -S . \
             -B clean_build \
             -G Ninja \
             -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_C_COMPILER=clang \
-            -DCMAKE_CXX_COMPILER=clang++
+            -DCMAKE_CXX_COMPILER=clang++ \
+            -DCMAKE_PREFIX_PATH="$PWD/../deps/protobuf_install;$PWD/../deps/gflags_install" \
+            -DProtobuf_ROOT="$PWD/../deps/protobuf_install" \
+            -DProtobuf_DIR="$PWD/../deps/protobuf_install/lib/cmake/protobuf" \
+            -DProtobuf_PROTOC_EXECUTABLE="$PWD/../deps/protobuf_install/bin/protoc"
+
+          echo
+          echo "========================================"
+          echo "CMAKE CONFIGURATION COMPLETE"
+          echo "========================================"
 
       - name: Build delta_generator
         shell: bash
@@ -287,6 +417,11 @@ jobs:
           set -o pipefail
 
           cd ota_tool/full_build
+
+          echo
+          echo "========================================"
+          echo "BUILD delta_generator"
+          echo "========================================"
 
           cmake \
             --build clean_build \
@@ -305,23 +440,29 @@ jobs:
           test -x "$BIN"
 
           echo
-          echo "================================"
-          echo " DELTA GENERATOR SUCCESS"
-          echo "================================"
+          echo "========================================"
+          echo "DELTA GENERATOR SUCCESS"
+          echo "========================================"
 
           ls -lh "$BIN"
+
+          echo
+          echo "FILE:"
           file "$BIN"
+
+          echo
+          echo "SHA256:"
           sha256sum "$BIN"
 
           echo
-          echo "=== HELP ==="
+          echo "HELP:"
           "$BIN" --help || true
 
       - name: Upload delta_generator
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: AI14ROM-delta-generator-v2
+          name: AI14ROM-delta-generator-final
           path: |
             ota_tool/full_build/clean_build/delta_generator
             ota_tool/full_build/delta_generator_build.log
@@ -332,7 +473,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: AI14ROM-delta-generator-v2-build-log
+          name: AI14ROM-delta-generator-final-build-log
           path: |
             ota_tool/full_build/delta_generator_build.log
             ota_tool/full_build/clean_build/CMakeCache.txt
