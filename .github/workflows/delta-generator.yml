@@ -272,6 +272,12 @@ jobs:
           clone_or_update libbrillo \
             https://android.googlesource.com/platform/external/libbrillo
 
+          clone_or_update system_core \
+            https://android.googlesource.com/platform/system/core
+
+          clone_or_update system_extras \
+            https://android.googlesource.com/platform/system/extras
+
           clone_or_update external_avb \
             https://android.googlesource.com/platform/external/avb
 
@@ -282,16 +288,19 @@ jobs:
             https://android.googlesource.com/platform/external/googletest
 
           clone_or_update puffin \
-            https://android.googlesource.com/platform/system/update_engine/puffin
+            https://android.googlesource.com/platform/external/puffin
 
           clone_or_update bsdiff \
             https://android.googlesource.com/platform/external/bsdiff
 
           clone_or_update zucchini \
-            https://android.googlesource.com/platform/system/update_engine/zucchini
+            https://android.googlesource.com/platform/external/zucchini
 
           clone_or_update erofs-utils \
             https://android.googlesource.com/platform/external/erofs-utils
+
+          clone_or_update lzma \
+            https://android.googlesource.com/platform/external/lzma
 
           echo
           echo "=== DEPENDENCIES READY ==="
