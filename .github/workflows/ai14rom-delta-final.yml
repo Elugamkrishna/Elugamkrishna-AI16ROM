@@ -230,7 +230,40 @@ jobs:
 
           echo
           echo "Source validation OK"
+      - name: Build gflags
+        shell: bash
+        run: |
+          set -euxo pipefail
 
+          cd ota_tool
+
+          rm -rf gflags_build
+          rm -rf deps/gflags_install
+
+          cmake \
+            -S deps/gflags \
+            -B gflags_build \
+            -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DBUILD_SHARED_LIBS=OFF \
+            -DGFLAGS_BUILD_TESTING=OFF \
+            -DCMAKE_INSTALL_PREFIX="$PWD/deps/gflags_install"
+
+          cmake \
+            --build gflags_build \
+            --parallel 2
+
+          cmake \
+            --build gflags_build \
+            --target install
+
+          echo
+          echo "=== GFLAGS RESULT ==="
+
+          test -f deps/gflags_install/lib/libgflags.a
+
+        
+          ls -lh deps/gflags_install/lib/libgflags.a
       - name: Configure delta_generator
         shell: bash
         run: |
