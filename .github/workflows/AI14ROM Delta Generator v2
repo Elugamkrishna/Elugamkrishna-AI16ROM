@@ -1,0 +1,330 @@
+name: AI14ROM Delta Generator v2
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  delta-generator:
+    name: Build delta_generator
+    runs-on: ubuntu-24.04
+
+    steps:
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Show build revision
+        shell: bash
+        run: |
+          set -eux
+
+          echo "======================================"
+          echo " AI14ROM DELTA GENERATOR v2"
+          echo "======================================"
+
+          echo
+          echo "Commit:"
+          git rev-parse HEAD
+
+          echo
+          echo "Revision:"
+          git log -1 --oneline
+
+          echo
+          echo "Repository:"
+          pwd
+
+          echo
+          echo "OTA source:"
+          test -d ota_tool
+          test -f ota_tool/full_build/CMakeLists.txt
+
+          echo "OTA source OK"
+
+      - name: Install build packages
+        shell: bash
+        run: |
+          set -eux
+
+          sudo apt-get update
+
+          sudo apt-get install -y \
+            build-essential \
+            clang \
+            lld \
+            cmake \
+            ninja-build \
+            pkg-config \
+            git \
+            curl \
+            wget \
+            rsync \
+            unzip \
+            zip \
+            python3 \
+            protobuf-compiler \
+            libprotobuf-dev \
+            libssl-dev \
+            liblz4-dev \
+            liblzma-dev \
+            libzstd-dev \
+            zlib1g-dev \
+            libbz2-dev \
+            libbrotli-dev \
+            libgflags-dev \
+            libgtest-dev
+
+      - name: Prepare OTA dependencies
+        shell: bash
+        run: |
+          set -euxo pipefail
+
+          cd ota_tool
+
+          mkdir -p deps
+
+          clone_dep() {
+            NAME="$1"
+            URL="$2"
+
+            echo
+            echo "======================================"
+            echo "DEPENDENCY: $NAME"
+            echo "URL: $URL"
+            echo "======================================"
+
+            if [ -d "deps/$NAME/.git" ]; then
+              echo "Already cloned: $NAME"
+              return 0
+            fi
+
+            if [ -d "deps/$NAME" ]; then
+              if [ -n "$(find "deps/$NAME" -mindepth 1 -print -quit 2>/dev/null)" ]; then
+                echo "Directory already populated: $NAME"
+                return 0
+              fi
+
+              rm -rf "deps/$NAME"
+            fi
+
+            git clone --depth=1 "$URL" "deps/$NAME"
+          }
+
+          clone_dep libbase \
+            https://android.googlesource.com/platform/system/libbase
+
+          clone_dep libchrome \
+            https://android.googlesource.com/platform/external/libchrome
+
+          clone_dep libbrillo \
+            https://android.googlesource.com/platform/external/libbrillo
+
+          clone_dep system_core \
+            https://android.googlesource.com/platform/system/core
+
+          clone_dep system_extras \
+            https://android.googlesource.com/platform/system/extras
+
+          clone_dep external_avb \
+            https://android.googlesource.com/platform/external/avb
+
+          clone_dep gflags \
+            https://android.googlesource.com/platform/external/gflags
+
+          clone_dep googletest \
+            https://android.googlesource.com/platform/external/googletest
+
+          clone_dep puffin \
+            https://android.googlesource.com/platform/external/puffin
+
+          clone_dep bsdiff \
+            https://android.googlesource.com/platform/external/bsdiff
+
+          clone_dep zucchini \
+            https://android.googlesource.com/platform/external/zucchini
+
+          clone_dep erofs-utils \
+            https://android.googlesource.com/platform/external/erofs-utils
+
+          clone_dep lzma \
+            https://android.googlesource.com/platform/external/lzma
+
+          echo
+          echo "======================================"
+          echo "VERIFY DEPENDENCIES"
+          echo "======================================"
+
+          for D in \
+            libbase \
+            libchrome \
+            libbrillo \
+            system_core \
+            system_extras \
+            external_avb \
+            gflags \
+            googletest \
+            puffin \
+            bsdiff \
+            zucchini \
+            erofs-utils \
+            lzma
+          do
+            test -d "deps/$D"
+            echo "OK: $D"
+          done
+
+          echo
+          echo "=== PUFFIN ==="
+          test -d deps/puffin
+          find deps/puffin -maxdepth 2 -type f | head -20
+
+          echo
+          echo "=== ZUCCHINI ==="
+          test -d deps/zucchini
+          find deps/zucchini -maxdepth 2 -type f | head -20
+
+          echo
+          echo "=== AVB ==="
+          test -d deps/external_avb/libavb
+
+          echo
+          echo "ALL DEPENDENCIES READY"
+
+      - name: Prepare EROFS
+        shell: bash
+        run: |
+          set -euxo pipefail
+
+          cd ota_tool
+
+          mkdir -p deps/erofs-utils/include
+
+          cat > deps/erofs-utils/include/config.h <<'EOF'
+#pragma once
+
+#define PACKAGE_VERSION "1.8"
+#define HAVE_MEMRCHR 1
+#define HAVE_MKSTEMP 1
+#define HAVE_FTRUNCATE 1
+#define HAVE_PREAD 1
+#define HAVE_PWRITE 1
+#define HAVE_POSIX_FALLOCATE 1
+EOF
+
+          NAMEI="deps/erofs-utils/lib/namei.c"
+
+          if [ -f "$NAMEI" ]; then
+            if ! grep -q "AI14ROM_MAKEDEV_FALLBACK" "$NAMEI"; then
+              sed -i '1i\
+#ifndef AI14ROM_MAKEDEV_FALLBACK\
+#define AI14ROM_MAKEDEV_FALLBACK\
+#include <sys/sysmacros.h>\
+#ifndef makedev\
+#define makedev(major, minor) ((((unsigned long long)(major)) << 8) | ((unsigned long long)(minor) & 0xffULL))\
+#endif\
+#endif' "$NAMEI"
+            fi
+          fi
+
+          echo "EROFS preparation complete"
+
+      - name: Check CMake
+        shell: bash
+        run: |
+          set -euxo pipefail
+
+          cd ota_tool/full_build
+
+          test -f CMakeLists.txt
+
+          echo "=== TERMUX PATH CHECK ==="
+
+          if grep -n "/data/data/com.termux" CMakeLists.txt; then
+            echo "ERROR: Termux path detected"
+            exit 1
+          fi
+
+          echo "CMake portability OK"
+
+      - name: Configure
+        shell: bash
+        run: |
+          set -euxo pipefail
+
+          cd ota_tool/full_build
+
+          rm -rf clean_build
+
+          cmake \
+            -S . \
+            -B clean_build \
+            -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_C_COMPILER=clang \
+            -DCMAKE_CXX_COMPILER=clang++
+
+      - name: Build delta_generator
+        shell: bash
+        run: |
+          set -o pipefail
+
+          cd ota_tool/full_build
+
+          cmake \
+            --build clean_build \
+            --target delta_generator \
+            --parallel 2 \
+            2>&1 | tee delta_generator_build.log
+
+      - name: Verify
+        if: success()
+        shell: bash
+        run: |
+          set -eux
+
+          BIN="ota_tool/full_build/clean_build/delta_generator"
+
+          test -x "$BIN"
+
+          echo
+          echo "======================================"
+          echo " DELTA GENERATOR SUCCESS"
+          echo "======================================"
+
+          ls -lh "$BIN"
+
+          echo
+          file "$BIN"
+
+          echo
+          sha256sum "$BIN"
+
+          echo
+          "$BIN" --help || true
+
+      - name: Upload delta_generator
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: AI14ROM-delta-generator-v2
+          path: |
+            ota_tool/full_build/clean_build/delta_generator
+            ota_tool/full_build/delta_generator_build.log
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload failure log
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: AI14ROM-delta-generator-v2-log
+          path: |
+            ota_tool/full_build/delta_generator_build.log
+            ota_tool/full_build/clean_build/CMakeCache.txt
+          if-no-files-found: ignore
+          retention-days: 14
