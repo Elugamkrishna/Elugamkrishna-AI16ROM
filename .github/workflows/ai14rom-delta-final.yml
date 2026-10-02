@@ -222,7 +222,7 @@ jobs:
 
           ls -lh deps/gflags_install/lib/libgflags.a
 
-      - name: Build matching Protobuf
+      - name: Build Protobuf
         shell: bash
         run: |
           set -euxo pipefail
@@ -295,11 +295,11 @@ jobs:
           echo "runtime_version.h: OK"
 
           echo
-          echo "protoc:"
+          echo "PROTOC:"
           deps/protobuf_install/bin/protoc --version
 
           echo
-          echo "libprotobuf:"
+          echo "LIBPROTOBUF:"
           ls -lh deps/protobuf_install/lib/libprotobuf.a
 
       - name: Prepare EROFS
@@ -323,21 +323,6 @@ jobs:
           #define HAVE_POSIX_FALLOCATE 1
           EOF
 
-          NAMEI="deps/erofs-utils/lib/namei.c"
-
-          if [ -f "$NAMEI" ]; then
-            if ! grep -q "AI14ROM_MAKEDEV_FALLBACK" "$NAMEI"; then
-              sed -i '1i\
-          #ifndef AI14ROM_MAKEDEV_FALLBACK\
-          #define AI14ROM_MAKEDEV_FALLBACK\
-          #include <sys/sysmacros.h>\
-          #ifndef makedev\
-          #define makedev(major, minor) ((((unsigned long long)(major)) << 8) | ((unsigned long long)(minor) & 0xffULL))\
-          #endif\
-          #endif' "$NAMEI"
-            fi
-          fi
-
           echo "EROFS preparation complete"
 
       - name: Validate CMake
@@ -347,12 +332,9 @@ jobs:
 
           test -f ota_tool/full_build/CMakeLists.txt
 
-          echo "=== TERMUX PATH CHECK ==="
-
           if grep -n \
             "/data/data/com.termux/files/home" \
             ota_tool/full_build/CMakeLists.txt; then
-
             echo "ERROR: Termux-specific path found"
             exit 1
           fi
@@ -390,9 +372,45 @@ jobs:
 
           rm -rf clean_build
 
-          export PATH="$PWD/../deps/protobuf_install/bin:$PATH"
+          PROTOBUF_ROOT="$PWD/../deps/protobuf_install"
+          GFLAGS_ROOT="$PWD/../deps/gflags_install"
 
-          export CMAKE_PREFIX_PATH="$PWD/../deps/protobuf_install:$PWD/../deps/gflags_install"
+          echo
+          echo "========================================"
+          echo "FORCE CUSTOM PROTOBUF"
+          echo "========================================"
+
+          test -f \
+            "$PROTOBUF_ROOT/include/google/protobuf/runtime_version.h"
+
+          test -f \
+            "$PROTOBUF_ROOT/lib/libprotobuf.a"
+
+          test -x \
+            "$PROTOBUF_ROOT/bin/protoc"
+
+          echo
+          echo "PROTOBUF HEADER:"
+          ls -lh \
+            "$PROTOBUF_ROOT/include/google/protobuf/runtime_version.h"
+
+          echo
+          echo "PROTOBUF LIB:"
+          ls -lh \
+            "$PROTOBUF_ROOT/lib/libprotobuf.a"
+
+          echo
+          echo "PROTOC:"
+          "$PROTOBUF_ROOT/bin/protoc" --version
+
+          export PATH="$PROTOBUF_ROOT/bin:$PATH"
+
+          export CMAKE_PREFIX_PATH="$PROTOBUF_ROOT:$GFLAGS_ROOT"
+
+          echo
+          echo "========================================"
+          echo "CMAKE CONFIGURE"
+          echo "========================================"
 
           cmake \
             -S . \
@@ -401,10 +419,23 @@ jobs:
             -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_C_COMPILER=clang \
             -DCMAKE_CXX_COMPILER=clang++ \
-            -DCMAKE_PREFIX_PATH="$PWD/../deps/protobuf_install;$PWD/../deps/gflags_install" \
-            -DProtobuf_ROOT="$PWD/../deps/protobuf_install" \
-            -DProtobuf_DIR="$PWD/../deps/protobuf_install/lib/cmake/protobuf" \
-            -DProtobuf_PROTOC_EXECUTABLE="$PWD/../deps/protobuf_install/bin/protoc"
+            -DCMAKE_PREFIX_PATH="$PROTOBUF_ROOT;$GFLAGS_ROOT" \
+            -DProtobuf_ROOT="$PROTOBUF_ROOT" \
+            -DProtobuf_DIR="$PROTOBUF_ROOT/lib/cmake/protobuf" \
+            -DProtobuf_INCLUDE_DIR="$PROTOBUF_ROOT/include" \
+            -DProtobuf_LIBRARY="$PROTOBUF_ROOT/lib/libprotobuf.a" \
+            -DProtobuf_LITE_LIBRARY="$PROTOBUF_ROOT/lib/libprotobuf-lite.a" \
+            -DProtobuf_PROTOC_EXECUTABLE="$PROTOBUF_ROOT/bin/protoc"
+
+          echo
+          echo "========================================"
+          echo "VERIFY CMAKE PROTOBUF"
+          echo "========================================"
+
+          grep -Ei \
+            "Protobuf|PROTOBUF" \
+            clean_build/CMakeCache.txt \
+            | head -80 || true
 
           echo
           echo "========================================"
