@@ -604,7 +604,37 @@ jobs:
           )
 
           # --------------------------------------------------------
-          # FIX 7: add Android 14 SHA include path
+          # FIX 7: Android libfec host include paths
+          #
+          # fec/ecc.h is under libfec/include
+          # fec.h     is at libfec root
+          # --------------------------------------------------------
+
+          fec_root = (
+              'include_directories('
+              '"${CMAKE_SOURCE_DIR}/../deps/system_extras/libfec"'
+              ')
+'
+          )
+
+          if '"${CMAKE_SOURCE_DIR}/../deps/system_extras/libfec"' not in s:
+              s += "
+" + fec_root
+
+          # Android 14 libfec headers also reference mincrypt.
+          mincrypt_root = (
+              'include_directories('
+              '"${CMAKE_SOURCE_DIR}/../deps/system_core/include"'
+              ')
+'
+          )
+
+          if '"${CMAKE_SOURCE_DIR}/../deps/system_core/include"' not in s:
+              s += "
+" + mincrypt_root
+
+          # --------------------------------------------------------
+          # FIX 8: Android 14 SHA include path
           # --------------------------------------------------------
 
           sha_include = (
@@ -683,6 +713,21 @@ jobs:
 
           test -f \
             gen/lz4diff/lz4diff.pb.cc
+
+          echo
+          echo "========================================"
+          echo "VERIFY FEC HOST HEADERS"
+          echo "========================================"
+
+          test -f             ../deps/system_extras/libfec/fec.h
+
+          test -f             ../deps/system_extras/libfec/include/fec/ecc.h
+
+          test -f             ../deps/system_extras/libfec/include/fec/io.h
+
+          echo "FEC ROOT HEADER: OK"
+          echo "FEC ECC HEADER: OK"
+          echo "FEC IO HEADER: OK"
 
           echo
           echo "HOST BUILD PATCH VERIFIED"
