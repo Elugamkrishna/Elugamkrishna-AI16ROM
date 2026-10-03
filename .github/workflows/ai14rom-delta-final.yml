@@ -1,6 +1,9 @@
 name: AI14ROM Delta Generator Final
 
 on:
+  push:
+    branches:
+      - main
   workflow_dispatch: {}
 
 permissions:
