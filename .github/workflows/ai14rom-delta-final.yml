@@ -1,13 +1,672 @@
-      - name: Apply host compatibility fixes
+name: AI14ROM Delta Generator Final
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build delta_generator
+    runs-on: ubuntu-24.04
+
+    steps:
+
+      # ============================================================
+      # 01. CHECKOUT
+      # ============================================================
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      # ============================================================
+      # 02. VERIFY REPOSITORY
+      # ============================================================
+
+      - name: Verify repository
+        shell: bash
+        run: |
+          set -euxo pipefail
+
+          echo "========================================"
+          echo " AI14ROM DELTA GENERATOR"
+          echo " ANDROID 14 HOST BUILD"
+          echo "========================================"
+
+          git rev-parse HEAD
+          git log -1 --oneline
+
+          test -d ota_tool
+          test -d ota_tool/full_build
+          test -f ota_tool/full_build/CMakeLists.txt
+          test -f ota_tool/update_engine/scripts/brillo_update_payload
+
+          echo
+          echo "REPOSITORY OK"
+
+      # ============================================================
+      # 03. BUILD DEPENDENCIES
+      # ============================================================
+
+      - name: Install build dependencies
+        shell: bash
+        run: |
+          set -euxo pipefail
+
+          sudo apt-get update
+
+          sudo apt-get install -y \
+            build-essential \
+            clang \
+            lld \
+            cmake \
+            ninja-build \
+            pkg-config \
+            git \
+            curl \
+            wget \
+            rsync \
+            unzip \
+            zip \
+            python3 \
+            python3-pip \
+            libssl-dev \
+            libevent-dev \
+            liblz4-dev \
+            liblzma-dev \
+            libzstd-dev \
+            zlib1g-dev \
+            libbz2-dev \
+            libbrotli-dev \
+            libgflags-dev \
+            libgtest-dev
+
+          echo
+          echo "========================================"
+          echo "BUILD DEPENDENCIES READY"
+          echo "========================================"
+
+          clang --version | head -1
+          cmake --version | head -1
+          ninja --version
+
+      # ============================================================
+      # 04. OTA DEPENDENCIES
+      # ============================================================
+
+      - name: Prepare OTA dependencies
+        shell: bash
+        run: |
+          set -euxo pipefail
+
+          cd ota_tool
+
+          mkdir -p deps
+
+          clone_branch() {
+            name="$1"
+            branch="$2"
+            url="$3"
+
+            echo
+            echo "========================================"
+            echo "CLONE: $name"
+            echo "BRANCH: $branch"
+            echo "========================================"
+
+            rm -rf "deps/$name"
+
+            git clone \
+              --depth=1 \
+              --branch "$branch" \
+              "$url" \
+              "deps/$name"
+          }
+
+          clone_main() {
+            name="$1"
+            url="$2"
+
+            echo
+            echo "========================================"
+            echo "CLONE: $name"
+            echo "========================================"
+
+            rm -rf "deps/$name"
+
+            git clone \
+              --depth=1 \
+              "$url" \
+              "deps/$name"
+          }
+
+          # --------------------------------------------------------
+          # ANDROID 14 PLATFORM DEPENDENCIES
+          # --------------------------------------------------------
+
+          clone_branch \
+            libbase \
+            android14-release \
+            https://android.googlesource.com/platform/system/libbase
+
+          clone_branch \
+            libchrome \
+            android14-release \
+            https://android.googlesource.com/platform/external/libchrome
+
+          clone_branch \
+            libbrillo \
+            android14-release \
+            https://android.googlesource.com/platform/external/libbrillo
+
+          clone_branch \
+            system_core \
+            android14-release \
+            https://android.googlesource.com/platform/system/core
+
+          clone_branch \
+            system_extras \
+            android14-release \
+            https://android.googlesource.com/platform/system/extras
+
+          clone_branch \
+            external_avb \
+            android14-release \
+            https://android.googlesource.com/platform/external/avb
+
+          # --------------------------------------------------------
+          # GENERIC OTA DEPENDENCIES
+          # --------------------------------------------------------
+
+          clone_main \
+            gflags \
+            https://android.googlesource.com/platform/external/gflags
+
+          clone_main \
+            googletest \
+            https://android.googlesource.com/platform/external/googletest
+
+          clone_main \
+            puffin \
+            https://android.googlesource.com/platform/external/puffin
+
+          clone_main \
+            bsdiff \
+            https://android.googlesource.com/platform/external/bsdiff
+
+          clone_main \
+            zucchini \
+            https://android.googlesource.com/platform/external/zucchini
+
+          clone_main \
+            erofs-utils \
+            https://android.googlesource.com/platform/external/erofs-utils
+
+          clone_main \
+            lzma \
+            https://android.googlesource.com/platform/external/lzma
+
+          echo
+          echo "========================================"
+          echo "DEPENDENCY VERIFICATION"
+          echo "========================================"
+
+          for d in \
+            libbase \
+            libchrome \
+            libbrillo \
+            system_core \
+            system_extras \
+            external_avb \
+            gflags \
+            googletest \
+            puffin \
+            bsdiff \
+            zucchini \
+            erofs-utils \
+            lzma
+          do
+            test -d "deps/$d"
+            echo "OK: deps/$d"
+          done
+
+          test -d deps/external_avb/libavb
+          test -d deps/external_avb/libavb/sha
+
+          echo
+          echo "ANDROID 14 DEPENDENCIES READY"
+
+          echo
+          echo "LIBCHROME:"
+          git -C deps/libchrome rev-parse --short HEAD
+
+          echo
+          echo "LIBBRILLO:"
+          git -C deps/libbrillo rev-parse --short HEAD
+
+          echo
+          echo "LIBBASE:"
+          git -C deps/libbase rev-parse --short HEAD
+
+          echo
+          echo "AVB:"
+          git -C deps/external_avb rev-parse --short HEAD
+
+      # ============================================================
+      # 05. GFLAGS
+      # ============================================================
+
+      - name: Build gflags
+        shell: bash
+        run: |
+          set -euxo pipefail
+
+          cd ota_tool
+
+          rm -rf gflags_build
+          rm -rf deps/gflags_install
+
+          cmake \
+            -S deps/gflags \
+            -B gflags_build \
+            -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DBUILD_SHARED_LIBS=OFF \
+            -DGFLAGS_BUILD_TESTING=OFF \
+            -DCMAKE_INSTALL_PREFIX="$PWD/deps/gflags_install"
+
+          cmake \
+            --build gflags_build \
+            --parallel 2
+
+          cmake \
+            --build gflags_build \
+            --target install
+
+          test -f \
+            deps/gflags_install/lib/libgflags.a
+
+          echo
+          echo "GFLAGS OK"
+
+          ls -lh \
+            deps/gflags_install/lib/libgflags.a
+
+      # ============================================================
+      # 06. PROTOBUF 7.35.1
+      # ============================================================
+
+      - name: Build Protobuf 7.35.1
+        shell: bash
+        run: |
+          set -euxo pipefail
+
+          cd ota_tool
+
+          rm -rf deps/protobuf
+          rm -rf protobuf_build
+          rm -rf deps/protobuf_install
+
+          echo
+          echo "========================================"
+          echo "PROTOBUF v35.1"
+          echo "========================================"
+
+          git clone \
+            --depth=1 \
+            --branch v35.1 \
+            https://github.com/protocolbuffers/protobuf.git \
+            deps/protobuf
+
+          cmake \
+            -S deps/protobuf \
+            -B protobuf_build \
+            -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -Dprotobuf_BUILD_TESTS=OFF \
+            -Dprotobuf_BUILD_SHARED_LIBS=OFF \
+            -Dprotobuf_BUILD_LIBPROTOC=ON \
+            -Dprotobuf_BUILD_PROTOC_BINARIES=ON \
+            -DCMAKE_INSTALL_PREFIX="$PWD/deps/protobuf_install"
+
+          cmake \
+            --build protobuf_build \
+            --parallel 2
+
+          cmake \
+            --build protobuf_build \
+            --target install
+
+          test -x \
+            deps/protobuf_install/bin/protoc
+
+          test -f \
+            deps/protobuf_install/lib/libprotobuf.a
+
+          test -f \
+            deps/protobuf_install/include/google/protobuf/runtime_version.h
+
+          echo
+          echo "PROTOC:"
+          deps/protobuf_install/bin/protoc --version
+
+          deps/protobuf_install/bin/protoc --version \
+            | grep -q "35.1"
+
+          grep -q \
+            "7035001" \
+            deps/protobuf_install/include/google/protobuf/runtime_version.h
+
+          echo
+          echo "PROTOBUF 7.35.1 OK"
+
+      # ============================================================
+      # 07. EROFS
+      # ============================================================
+
+      - name: Prepare EROFS
+        shell: bash
+        run: |
+          set -euxo pipefail
+
+          cd ota_tool
+
+          mkdir -p deps/erofs-utils/include
+
+          cat > deps/erofs-utils/include/config.h <<'EOF'
+          #pragma once
+
+          #define PACKAGE_VERSION "1.8"
+          #define HAVE_MEMRCHR 1
+          #define HAVE_MKSTEMP 1
+          #define HAVE_FTRUNCATE 1
+          #define HAVE_PREAD 1
+          #define HAVE_PWRITE 1
+          #define HAVE_POSIX_FALLOCATE 1
+          EOF
+
+          echo "EROFS CONFIG OK"
+
+      # ============================================================
+      # 08. ANDROID 14 HOST BUILD PATCH
+      # ============================================================
+
+      - name: Prepare Android 14 host build
         shell: bash
         run: |
           set -euxo pipefail
 
           cd ota_tool/full_build
 
+          echo
           echo "========================================"
-          echo "AI14ROM HOST COMPATIBILITY FIX"
+          echo "ANDROID 14 HOST BUILD PATCH"
           echo "========================================"
+
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          p = Path("CMakeLists.txt")
+          s = p.read_text()
+
+          # --------------------------------------------------------
+          # FIX 1: malformed include_directories
+          # --------------------------------------------------------
+
+          s = s.replace(
+              'include_directories(\ninclude_directories("../deps/fec")',
+              'include_directories(\n  "../deps/fec"',
+              1
+          )
+
+          # --------------------------------------------------------
+          # FIX 2: Android host build definition
+          # --------------------------------------------------------
+
+          if "__ANDROID_HOST__" not in s:
+              marker = "target_compile_definitions(delta_generator PRIVATE\n"
+              if marker in s:
+                  s = s.replace(
+                      marker,
+                      marker + "  __ANDROID_HOST__\n",
+                      1
+                  )
+              else:
+                  raise SystemExit(
+                      "target_compile_definitions marker missing"
+                  )
+
+          # --------------------------------------------------------
+          # FIX 3: generated protobuf sources
+          # --------------------------------------------------------
+
+          if "gen/update_engine/update_metadata.pb.cc" not in s:
+              s = s.replace(
+                  "set(GENERATED_PROTO\n)",
+                  """set(GENERATED_PROTO
+            "${GEN}/update_engine/update_metadata.pb.cc"
+            "${GEN}/lz4diff/lz4diff.pb.cc"
+          )""",
+                  1
+              )
+
+          # --------------------------------------------------------
+          # FIX 4: host libchrome message loop sources
+          # --------------------------------------------------------
+
+          message_sources = [
+              "base/message_loop/incoming_task_queue.cc",
+              "base/message_loop/message_loop_task_runner.cc",
+              "base/message_loop/message_pump.cc",
+              "base/message_loop/message_pump_default.cc",
+              "base/message_loop/message_pump_libevent.cc",
+              "base/message_loop/watchable_io_message_pump_posix.cc",
+              "base/message_loop/message_loop_current.cc",
+              "base/files/file_descriptor_watcher_posix.cc",
+              "base/memory/ref_counted.cc",
+              "base/memory/ref_counted_memory.cc",
+              "base/memory/shared_memory_posix.cc",
+              "base/memory/shared_memory_handle_posix.cc",
+              "base/memory/shared_memory_helper.cc",
+              "base/memory/memory_mapped_file.cc",
+              "base/memory/memory_mapped_file_posix.cc",
+              "base/lazy_instance_helpers.cc",
+              "base/pending_task.cc",
+              "base/run_loop.cc",
+              "base/sequence_checker_impl.cc",
+              "base/sequence_token.cc",
+              "base/sequenced_task_runner.cc",
+              "base/synchronization/atomic_flag.cc",
+              "base/synchronization/condition_variable_posix.cc",
+              "base/synchronization/lock.cc",
+              "base/debug/alias.cc",
+              "base/debug/debugger.cc",
+              "base/debug/debugger_posix.cc",
+              "base/files/file.cc",
+              "base/files/file_posix.cc",
+              "base/files/file_util_posix.cc",
+              "base/files/file_path_constants.cc",
+              "base/native_library.cc",
+              "base/native_library_posix.cc",
+              "base/process/process_handle.cc",
+              "base/process/process_handle_posix.cc",
+              "base/process/process_handle_linux.cc",
+              "base/process/process_posix.cc",
+              "base/process/kill.cc",
+              "base/process/kill_posix.cc",
+              "base/process/memory.cc",
+              "base/process/process_iterator.cc",
+              "base/process/process_iterator_linux.cc",
+              "base/process/process_metrics.cc",
+              "base/process/process_metrics_posix.cc",
+              "base/process/process_metrics_linux.cc",
+              "base/process/internal_linux.cc",
+              "base/process/process_info_linux.cc",
+              "base/files/file_path_watcher_linux.cc",
+              "base/files/file_util_linux.cc",
+              "base/sys_info_linux.cc",
+              "base/posix/file_descriptor_shuffle.cc",
+              "base/posix/global_descriptors.cc",
+              "base/rand_util_posix.cc",
+              "base/sync_socket_posix.cc",
+          ]
+
+          for src in message_sources:
+              full = '${ROOT}/deps/libchrome/' + src
+              if Path("../deps/libchrome/" + src).exists():
+                  if full not in s:
+                      anchor = '  "${ROOT}/deps/libchrome/base/location.cc"\n'
+                      if anchor in s:
+                          s = s.replace(
+                              anchor,
+                              anchor + f'  "{full}"\n',
+                              1
+                          )
+
+          # --------------------------------------------------------
+          # FIX 5: Android 14 AVB SHA backend
+          # --------------------------------------------------------
+
+          avb_start = s.find("  # AVB\n")
+          if avb_start != -1:
+              avb_end = s.find("\n)\n\nset(GENERATED_PROTO", avb_start)
+
+              if avb_end != -1:
+                  avb_block = """  # AVB Android 14 SHA backend
+            "${ROOT}/deps/external_avb/libavb/avb_chain_partition_descriptor.c"
+            "${ROOT}/deps/external_avb/libavb/avb_cmdline.c"
+            "${ROOT}/deps/external_avb/libavb/avb_crc32.c"
+            "${ROOT}/deps/external_avb/libavb/avb_crypto.c"
+            "${ROOT}/deps/external_avb/libavb/avb_descriptor.c"
+            "${ROOT}/deps/external_avb/libavb/avb_footer.c"
+            "${ROOT}/deps/external_avb/libavb/avb_hash_descriptor.c"
+            "${ROOT}/deps/external_avb/libavb/avb_hashtree_descriptor.c"
+            "${ROOT}/deps/external_avb/libavb/avb_kernel_cmdline_descriptor.c"
+            "${ROOT}/deps/external_avb/libavb/avb_property_descriptor.c"
+            "${ROOT}/deps/external_avb/libavb/avb_rsa.c"
+            "${ROOT}/deps/external_avb/libavb/avb_slot_verify.c"
+            "${ROOT}/deps/external_avb/libavb/avb_sysdeps_posix.c"
+            "${ROOT}/deps/external_avb/libavb/avb_util.c"
+            "${ROOT}/deps/external_avb/libavb/avb_vbmeta_image.c"
+            "${ROOT}/deps/external_avb/libavb/avb_version.c"
+            "${ROOT}/deps/external_avb/libavb/sha/sha256_impl.c"
+            "${ROOT}/deps/external_avb/libavb/sha/sha512_impl.c"
+          """
+
+                  s = s[:avb_start] + avb_block + s[avb_end:]
+              else:
+                  raise SystemExit(
+                      "AVB block end marker missing"
+                  )
+
+          # --------------------------------------------------------
+          # FIX 6: remove wrong BoringSSL include path
+          # --------------------------------------------------------
+
+          s = re.sub(
+              r'\ninclude_directories\("\$\{CMAKE_SOURCE_DIR\}/\.\./deps/external_avb/libavb/boringssl".*?\)\n?',
+              "\n",
+              s
+          )
+
+          # --------------------------------------------------------
+          # FIX 7: add Android 14 SHA include path
+          # --------------------------------------------------------
+
+          sha_include = (
+              'include_directories('
+              '"${CMAKE_SOURCE_DIR}/../deps/external_avb/libavb/sha"'
+              ')\n'
+          )
+
+          if "libavb/libavb/sha" not in s and \
+             'deps/external_avb/libavb/sha"' not in s:
+              s += "\n" + sha_include
+
+          p.write_text(s)
+
+          # --------------------------------------------------------
+          # ATOMIC HOST COMPATIBILITY
+          # --------------------------------------------------------
+
+          atomic = Path(
+              "../deps/libchrome/base/atomicops_internals_portable.h"
+          )
+
+          if atomic.exists():
+              a = atomic.read_text()
+
+              a = a.replace(
+                  "__atomic_thread_fence(std::memory_order_seq_cst);",
+                  "std::atomic_thread_fence(std::memory_order_seq_cst);"
+              )
+
+              atomic.write_text(a)
+
+          print("CMAKE HOST PATCH COMPLETE")
+          PY
+
+          echo
+          echo "========================================"
+          echo "VERIFY CMAKE"
+          echo "========================================"
+
+          grep -n \
+            "__ANDROID_HOST__" \
+            CMakeLists.txt
+
+          grep -n \
+            "update_metadata.pb.cc" \
+            CMakeLists.txt
+
+          grep -n \
+            "message_pump_libevent.cc" \
+            CMakeLists.txt
+
+          grep -n \
+            "sha256_impl.c" \
+            CMakeLists.txt
+
+          echo
+          echo "========================================"
+          echo "VERIFY REQUIRED SOURCES"
+          echo "========================================"
+
+          test -f \
+            ../deps/libchrome/base/message_loop/message_pump_libevent.cc
+
+          test -f \
+            ../deps/libchrome/base/message_loop/message_pump_default.cc
+
+          test -f \
+            ../deps/external_avb/libavb/sha/sha256_impl.c
+
+          test -f \
+            ../deps/external_avb/libavb/sha/sha512_impl.c
+
+          test -f \
+            gen/update_engine/update_metadata.pb.cc
+
+          test -f \
+            gen/lz4diff/lz4diff.pb.cc
+
+          echo
+          echo "HOST BUILD PATCH VERIFIED"
+
+      # ============================================================
+      # 09. LIBBRILLO HOST SOURCES
+      # ============================================================
+
+      - name: Complete libbrillo host sources
+        shell: bash
+        run: |
+          set -euxo pipefail
+
+          cd ota_tool/full_build
 
           python3 - <<'PY'
           from pathlib import Path
@@ -15,55 +674,287 @@
           p = Path("CMakeLists.txt")
           s = p.read_text()
 
-          # Fix malformed include_directories nesting
+          sources = [
+              "brillo/backoff_entry.cc",
+              "brillo/errors/error.cc",
+              "brillo/errors/error_codes.cc",
+              "brillo/flag_helper.cc",
+              "brillo/message_loops/message_loop_utils.cc",
+              "brillo/mime_utils.cc",
+              "brillo/osrelease_reader.cc",
+              "brillo/process_information.cc",
+              "brillo/secure_blob.cc",
+              "brillo/syslog_logging.cc",
+              "brillo/type_name_undecorate.cc",
+              "brillo/url_utils.cc",
+              "brillo/userdb_utils.cc",
+              "brillo/value_conversion.cc",
+              "brillo/streams/input_stream_set.cc",
+              "brillo/streams/memory_containers.cc",
+              "brillo/streams/memory_stream.cc",
+              "brillo/streams/stream_errors.cc",
+              "brillo/streams/stream_utils.cc",
+          ]
+
+          anchor = (
+              '  "${ROOT}/deps/libbrillo/brillo/file_utils.cc"\n'
+          )
+
+          if anchor not in s:
+              raise SystemExit(
+                  "libbrillo anchor missing"
+              )
+
+          additions = ""
+
+          for src in sources:
+              full = Path("../deps/libbrillo") / src
+
+              if full.exists():
+                  cmake_path = (
+                      '${ROOT}/deps/libbrillo/' + src
+                  )
+
+                  if cmake_path not in s:
+                      additions += (
+                          f'  "{cmake_path}"\n'
+                      )
+
           s = s.replace(
-              '''include_directories(
-          include_directories("../deps/fec")
-          ''',
-              '''include_directories(
-            "../deps/fec"
-          ''',
+              anchor,
+              anchor + additions,
               1
           )
 
-          # Host build must behave as Android-host, not ChromeOS.
-          # libchrome otherwise enables USE_GLIB/USE_OZONE.
-          marker = '''target_compile_definitions(delta_generator PRIVATE
-          '''
-
-          if marker in s:
-              s = s.replace(
-                  marker,
-                  '''target_compile_definitions(delta_generator PRIVATE
-            __ANDROID_HOST__
-          ''',
-                  1
-              )
-          else:
-              raise SystemExit(
-                  "ERROR: target_compile_definitions marker not found"
-              )
-
           p.write_text(s)
+
+          print("LIBBRILLO HOST SOURCES COMPLETE")
           PY
+
+      # ============================================================
+      # 10. FINAL CMAKE VALIDATION
+      # ============================================================
+
+      - name: Validate final build configuration
+        shell: bash
+        run: |
+          set -euxo pipefail
+
+          cd ota_tool/full_build
 
           echo
           echo "========================================"
-          echo "VERIFY CMAKE FIX"
+          echo "FINAL CONFIGURATION AUDIT"
           echo "========================================"
 
-          grep -n -A10 \
-            "target_compile_definitions(delta_generator PRIVATE" \
+          if grep -n \
+            "/data/data/com.termux/files/home" \
+            CMakeLists.txt; then
+            echo "ERROR: Termux path remains"
+            exit 1
+          fi
+
+          if grep -n \
+            'include_directories("../deps/fec")' \
+            CMakeLists.txt; then
+            echo "ERROR: malformed include remains"
+            exit 1
+          fi
+
+          if grep -n \
+            'external_avb/libavb/boringssl' \
+            CMakeLists.txt; then
+            echo "ERROR: BoringSSL AVB path remains"
+            exit 1
+          fi
+
+          grep -q \
+            "__ANDROID_HOST__" \
+            CMakeLists.txt
+
+          grep -q \
+            "message_pump_libevent.cc" \
+            CMakeLists.txt
+
+          grep -q \
+            "update_metadata.pb.cc" \
+            CMakeLists.txt
+
+          grep -q \
+            "lz4diff.pb.cc" \
+            CMakeLists.txt
+
+          grep -q \
+            "sha256_impl.c" \
             CMakeLists.txt
 
           echo
-          echo "========================================"
-          echo "VERIFY INCLUDE BLOCK"
-          echo "========================================"
+          echo "FINAL CMAKE AUDIT: OK"
 
-          sed -n '1,35p' CMakeLists.txt
+      # ============================================================
+      # 11. CONFIGURE
+      # ============================================================
+
+      - name: Configure delta_generator
+        shell: bash
+        run: |
+          set -euxo pipefail
+
+          cd ota_tool/full_build
+
+          rm -rf clean_build
+
+          PROTOBUF_ROOT="$PWD/../deps/protobuf_install"
+          GFLAGS_ROOT="$PWD/../deps/gflags_install"
+
+          test -f \
+            "$PROTOBUF_ROOT/lib/libprotobuf.a"
+
+          test -x \
+            "$PROTOBUF_ROOT/bin/protoc"
+
+          test -f \
+            "$GFLAGS_ROOT/lib/libgflags.a"
+
+          export PATH="$PROTOBUF_ROOT/bin:$PATH"
+
+          export CMAKE_PREFIX_PATH="$PROTOBUF_ROOT;$GFLAGS_ROOT"
 
           echo
           echo "========================================"
-          echo "HOST COMPATIBILITY FIX COMPLETE"
+          echo "PROTOBUF"
           echo "========================================"
+
+          "$PROTOBUF_ROOT/bin/protoc" --version
+
+          echo
+          echo "========================================"
+          echo "GFLAGS"
+          echo "========================================"
+
+          ls -lh \
+            "$GFLAGS_ROOT/lib/libgflags.a"
+
+          echo
+          echo "========================================"
+          echo "CMAKE CONFIGURE"
+          echo "========================================"
+
+          cmake \
+            -S . \
+            -B clean_build \
+            -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_C_COMPILER=clang \
+            -DCMAKE_CXX_COMPILER=clang++ \
+            -DCMAKE_CXX_STANDARD=20 \
+            -DCMAKE_CXX_FLAGS="-include cstdint -D__ANDROID_HOST__" \
+            -DCMAKE_C_FLAGS="-D__ANDROID_HOST__" \
+            -DCMAKE_PREFIX_PATH="$PROTOBUF_ROOT;$GFLAGS_ROOT" \
+            -DProtobuf_ROOT="$PROTOBUF_ROOT" \
+            -DProtobuf_DIR="$PROTOBUF_ROOT/lib/cmake/protobuf" \
+            -DProtobuf_INCLUDE_DIR="$PROTOBUF_ROOT/include" \
+            -DProtobuf_LIBRARY="$PROTOBUF_ROOT/lib/libprotobuf.a" \
+            -DProtobuf_LITE_LIBRARY="$PROTOBUF_ROOT/lib/libprotobuf-lite.a" \
+            -DProtobuf_PROTOC_EXECUTABLE="$PROTOBUF_ROOT/bin/protoc"
+
+          echo
+          echo "========================================"
+          echo "CMAKE PROTOBUF RESULT"
+          echo "========================================"
+
+          grep -Ei \
+            "Protobuf|PROTOBUF" \
+            clean_build/CMakeCache.txt \
+            | head -100 || true
+
+          echo
+          echo "CMAKE CONFIGURE SUCCESS"
+
+      # ============================================================
+      # 12. BUILD
+      # ============================================================
+
+      - name: Build delta_generator
+        shell: bash
+        run: |
+          set -o pipefail
+
+          cd ota_tool/full_build
+
+          echo
+          echo "========================================"
+          echo "BUILD delta_generator"
+          echo "========================================"
+
+          cmake \
+            --build clean_build \
+            --target delta_generator \
+            --parallel 2 \
+            2>&1 | tee delta_generator_build.log
+
+      # ============================================================
+      # 13. VERIFY
+      # ============================================================
+
+      - name: Verify delta_generator
+        if: success()
+        shell: bash
+        run: |
+          set -euxo pipefail
+
+          BIN="ota_tool/full_build/clean_build/delta_generator"
+
+          test -x "$BIN"
+
+          echo
+          echo "========================================"
+          echo "DELTA GENERATOR SUCCESS"
+          echo "========================================"
+
+          ls -lh "$BIN"
+
+          echo
+          echo "FILE:"
+          file "$BIN"
+
+          echo
+          echo "SHA256:"
+          sha256sum "$BIN"
+
+          echo
+          echo "HELP:"
+          "$BIN" --help || true
+
+      # ============================================================
+      # 14. UPLOAD SUCCESS
+      # ============================================================
+
+      - name: Upload delta_generator
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: AI14ROM-delta-generator-final
+          path: |
+            ota_tool/full_build/clean_build/delta_generator
+            ota_tool/full_build/delta_generator_build.log
+            ota_tool/full_build/CMakeLists.txt
+          if-no-files-found: error
+          retention-days: 30
+
+      # ============================================================
+      # 15. UPLOAD FAILURE LOG
+      # ============================================================
+
+      - name: Upload failure log
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: AI14ROM-delta-generator-final-build-log
+          path: |
+            ota_tool/full_build/delta_generator_build.log
+            ota_tool/full_build/clean_build/CMakeCache.txt
+            ota_tool/full_build/clean_build/.ninja_log
+            ota_tool/full_build/CMakeLists.txt
+          if-no-files-found: ignore
+          retention-days: 14
