@@ -19,6 +19,8 @@
 
 #include "update_engine/payload_generator/filesystem_interface.h"
 #include "update_engine/payload_generator/delta_diff_generator.h"
+#include <erofs/internal.h>
+
 
 namespace chromeos_update_engine {
 
@@ -50,7 +52,8 @@ class ErofsFilesystem final : public FilesystemInterface {
   //    space.
   //  <metadata>: With the rest of ext2 metadata blocks, such as superblocks
   //    and bitmap tables.
-  static bool GetFiles(const std::string& filename,
+  static bool GetFiles(struct erofs_sb_info* sbi,
+                       const std::string& filename,
                        std::vector<File>* files,
                        const CompressionAlgorithm& algo);
 
