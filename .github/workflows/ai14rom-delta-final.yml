@@ -27,24 +27,19 @@ jobs:
           echo " AI14ROM DELTA GENERATOR FINAL"
           echo "========================================"
 
-          echo
-          echo "=== COMMIT ==="
           git rev-parse HEAD
           git log -1 --oneline
-
-          echo
-          echo "=== OTA SOURCE ==="
 
           test -d ota_tool
           test -f ota_tool/full_build/CMakeLists.txt
           test -f ota_tool/update_engine/scripts/brillo_update_payload
 
-          echo "OTA source OK"
+          echo "OTA SOURCE OK"
 
       - name: Install build dependencies
         shell: bash
         run: |
-          set -eux
+          set -euxo pipefail
 
           sudo apt-get update
 
@@ -73,8 +68,7 @@ jobs:
             libgflags-dev \
             libgtest-dev
 
-          echo
-          echo "Build packages installed"
+          echo "BUILD PACKAGES OK"
 
       - name: Prepare OTA dependencies
         shell: bash
@@ -82,7 +76,6 @@ jobs:
           set -euxo pipefail
 
           cd ota_tool
-
           mkdir -p deps
 
           clone_dep() {
@@ -92,7 +85,6 @@ jobs:
             echo
             echo "========================================"
             echo "DEPENDENCY: $name"
-            echo "$url"
             echo "========================================"
 
             if [ -d "deps/$name/.git" ]; then
@@ -183,7 +175,6 @@ jobs:
           test -d deps/erofs-utils
           test -d deps/lzma
 
-          echo
           echo "ALL OTA DEPENDENCIES READY"
 
       - name: Build gflags
@@ -213,14 +204,11 @@ jobs:
             --build gflags_build \
             --target install
 
-          echo
-          echo "========================================"
-          echo "GFLAGS RESULT"
-          echo "========================================"
-
           test -f deps/gflags_install/lib/libgflags.a
 
           ls -lh deps/gflags_install/lib/libgflags.a
+
+          echo "GFLAGS OK"
 
       - name: Build Protobuf
         shell: bash
@@ -233,7 +221,6 @@ jobs:
           rm -rf protobuf_build
           rm -rf deps/protobuf_install
 
-          echo
           echo "========================================"
           echo "CLONE PROTOBUF v35.1"
           echo "========================================"
@@ -243,11 +230,6 @@ jobs:
             --branch v35.1 \
             https://github.com/protocolbuffers/protobuf.git \
             deps/protobuf
-
-          echo
-          echo "========================================"
-          echo "CONFIGURE PROTOBUF v35.1"
-          echo "========================================"
 
           cmake \
             -S deps/protobuf \
@@ -260,28 +242,13 @@ jobs:
             -Dprotobuf_BUILD_PROTOC_BINARIES=ON \
             -DCMAKE_INSTALL_PREFIX="$PWD/deps/protobuf_install"
 
-          echo
-          echo "========================================"
-          echo "BUILD PROTOBUF v35.1"
-          echo "========================================"
-
           cmake \
             --build protobuf_build \
             --parallel 2
 
-          echo
-          echo "========================================"
-          echo "INSTALL PROTOBUF v35.1"
-          echo "========================================"
-
           cmake \
             --build protobuf_build \
             --target install
-
-          echo
-          echo "========================================"
-          echo "VERIFY PROTOBUF 7.35.1"
-          echo "========================================"
 
           test -f \
             deps/protobuf_install/include/google/protobuf/runtime_version.h
@@ -300,7 +267,7 @@ jobs:
             grep -q "35.1"
 
           echo
-          echo "RUNTIME VERSION:"
+          echo "PROTOBUF RUNTIME:"
 
           grep -n \
             "PROTOBUF_VERSION" \
@@ -313,10 +280,6 @@ jobs:
 
           echo
           echo "PROTOBUF 7.35.1 MATCH: OK"
-
-          echo
-          echo "LIBPROTOBUF:"
-          ls -lh deps/protobuf_install/lib/libprotobuf.a
 
       - name: Prepare EROFS
         shell: bash
@@ -339,7 +302,69 @@ jobs:
           #define HAVE_POSIX_FALLOCATE 1
           EOF
 
-          echo "EROFS preparation complete"
+          echo "EROFS OK"
+
+      - name: Apply host compatibility fixes
+        shell: bash
+        run: |
+          set -euxo pipefail
+
+          cd ota_tool/full_build
+
+          echo "========================================"
+          echo "HOST COMPATIBILITY FIXES"
+          echo "========================================"
+
+          python3 - <<'PY'
+          from pathlib import Path
+
+          p = Path("CMakeLists.txt")
+          s = p.read_text()
+
+          bad = '''include_directories(
+          include_directories("../deps/fec")
+          '''
+
+          good = '''include_directories(
+            "../deps/fec"
+          '''
+
+          if bad in s:
+              s = s.replace(bad, good, 1)
+              print("FIXED: malformed include_directories")
+          else:
+              print("INFO: malformed include_directories pattern not present")
+
+          p.write_text(s)
+          PY
+
+          echo
+          echo "=== CHECK INCLUDE DIRECTORIES ==="
+
+          grep -n -A8 -B2 \
+            'include_directories(' \
+            CMakeLists.txt | head -40
+
+          echo
+          echo "=== CREATE HOST C++ COMPAT HEADER ==="
+
+          mkdir -p ../host_compat
+
+          cat > ../host_compat/ai14rom_host_compat.h <<'EOF'
+          #pragma once
+
+          #include <stdint.h>
+          #include <cstdint>
+          #include <stddef.h>
+          #include <atomic>
+          #include <string>
+          #include <vector>
+          EOF
+
+          test -f ../host_compat/ai14rom_host_compat.h
+
+          echo
+          echo "HOST COMPATIBILITY PREPARATION OK"
 
       - name: Validate CMake
         shell: bash
@@ -377,7 +402,7 @@ jobs:
             .github/workflows/ai14rom-delta-final.yml
 
           echo
-          echo "CMake validation OK"
+          echo "CMAKE VALIDATION OK"
 
       - name: Configure delta_generator
         shell: bash
@@ -390,11 +415,7 @@ jobs:
 
           PROTOBUF_ROOT="$PWD/../deps/protobuf_install"
           GFLAGS_ROOT="$PWD/../deps/gflags_install"
-
-          echo
-          echo "========================================"
-          echo "FORCE CUSTOM PROTOBUF"
-          echo "========================================"
+          HOST_COMPAT="$PWD/../host_compat/ai14rom_host_compat.h"
 
           test -f \
             "$PROTOBUF_ROOT/include/google/protobuf/runtime_version.h"
@@ -405,23 +426,33 @@ jobs:
           test -x \
             "$PROTOBUF_ROOT/bin/protoc"
 
-          echo
-          echo "PROTOBUF HEADER:"
-          ls -lh \
-            "$PROTOBUF_ROOT/include/google/protobuf/runtime_version.h"
+          test -f \
+            "$HOST_COMPAT"
 
           echo
-          echo "PROTOBUF LIB:"
-          ls -lh \
-            "$PROTOBUF_ROOT/lib/libprotobuf.a"
+          echo "========================================"
+          echo "PROTOBUF"
+          echo "========================================"
 
-          echo
-          echo "PROTOC:"
           "$PROTOBUF_ROOT/bin/protoc" --version
 
-          export PATH="$PROTOBUF_ROOT/bin:$PATH"
+          echo
+          echo "========================================"
+          echo "GFLAGS"
+          echo "========================================"
 
-          export CMAKE_PREFIX_PATH="$PROTOBUF_ROOT:$GFLAGS_ROOT"
+          ls -lh \
+            "$GFLAGS_ROOT/lib/libgflags.a"
+
+          echo
+          echo "========================================"
+          echo "HOST COMPAT"
+          echo "========================================"
+
+          ls -lh "$HOST_COMPAT"
+
+          export PATH="$PROTOBUF_ROOT/bin:$PATH"
+          export CMAKE_PREFIX_PATH="$PROTOBUF_ROOT;$GFLAGS_ROOT"
 
           echo
           echo "========================================"
@@ -435,6 +466,7 @@ jobs:
             -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_C_COMPILER=clang \
             -DCMAKE_CXX_COMPILER=clang++ \
+            -DCMAKE_CXX_FLAGS="-include $HOST_COMPAT" \
             -DCMAKE_PREFIX_PATH="$PROTOBUF_ROOT;$GFLAGS_ROOT" \
             -DProtobuf_ROOT="$PROTOBUF_ROOT" \
             -DProtobuf_DIR="$PROTOBUF_ROOT/lib/cmake/protobuf" \
@@ -454,9 +486,7 @@ jobs:
             | head -80 || true
 
           echo
-          echo "========================================"
           echo "CMAKE CONFIGURATION COMPLETE"
-          echo "========================================"
 
       - name: Build delta_generator
         shell: bash
@@ -524,5 +554,6 @@ jobs:
           path: |
             ota_tool/full_build/delta_generator_build.log
             ota_tool/full_build/clean_build/CMakeCache.txt
+            ota_tool/full_build/clean_build/.ninja_log
           if-no-files-found: ignore
           retention-days: 14
