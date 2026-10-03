@@ -82,7 +82,8 @@ jobs:
             libbz2-dev \
             libbrotli-dev \
             libgflags-dev \
-            libgtest-dev
+            libgtest-dev \
+            libext2fs-dev
 
           echo
           echo "========================================"
@@ -201,8 +202,9 @@ jobs:
             zucchini \
             https://android.googlesource.com/platform/external/zucchini
 
-          clone_main \
+          clone_branch \
             erofs-utils \
+            android-14.0.0_r61 \
             https://android.googlesource.com/platform/external/erofs-utils
 
           clone_main \
@@ -235,6 +237,15 @@ jobs:
 
           test -d deps/external_avb/libavb
           test -d deps/external_avb/libavb/sha
+
+          test -f deps/erofs-utils/include/erofs/internal.h
+          test -f deps/erofs-utils/include/erofs/io.h
+          test -f deps/erofs-utils/lib/io.c
+          test -f deps/erofs-utils/lib/super.c
+
+          echo
+          echo "EROFS VERSION:"
+          git -C deps/erofs-utils describe --tags --always || true
 
           echo
           echo "ANDROID 14 DEPENDENCIES READY"
