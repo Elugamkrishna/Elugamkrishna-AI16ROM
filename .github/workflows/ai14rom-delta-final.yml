@@ -404,16 +404,21 @@ jobs:
           # that Ubuntu 24.04 already provides through linux/types.h.
           # Remove only the conflicting EROFS typedefs.
           sed -i \
-            -e '/^typedef u64     __u64;$/d' \
-            -e '/^typedef u64     __le64;$/d' \
-            -e '/^typedef u64     __be64;$/d' \
+            -e '/^[[:space:]]*typedef u64[[:space:]]*__u64;$/d' \
+            -e '/^[[:space:]]*typedef u64[[:space:]]*__le64;$/d' \
+            -e '/^[[:space:]]*typedef u64[[:space:]]*__be64;$/d' \
             deps/erofs-utils/include/erofs/defs.h
 
           echo "EROFS CONFIG OK"
 
           echo "EROFS TYPE COMPATIBILITY:"
-          ! grep -nE '^typedef u64[[:space:]]+__(u64|le64|be64);$' \
-            deps/erofs-utils/include/erofs/defs.h
+          if grep -nE '^[[:space:]]*typedef u64[[:space:]]+__(u64|le64|be64);$' \
+              deps/erofs-utils/include/erofs/defs.h; then
+            echo "ERROR: conflicting EROFS typedefs remain"
+            exit 1
+          fi
+
+          echo "EROFS TYPE COMPATIBILITY OK"
 
       # ============================================================
       # 08. ANDROID 14 HOST BUILD PATCH
