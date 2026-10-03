@@ -399,7 +399,21 @@ jobs:
           #define HAVE_POSIX_FALLOCATE 1
           EOF
 
+          # Ubuntu host compatibility:
+          # Android 14 EROFS v1.7.1 declares Linux 64-bit types
+          # that Ubuntu 24.04 already provides through linux/types.h.
+          # Remove only the conflicting EROFS typedefs.
+          sed -i \
+            -e '/^typedef u64     __u64;$/d' \
+            -e '/^typedef u64     __le64;$/d' \
+            -e '/^typedef u64     __be64;$/d' \
+            deps/erofs-utils/include/erofs/defs.h
+
           echo "EROFS CONFIG OK"
+
+          echo "EROFS TYPE COMPATIBILITY:"
+          ! grep -nE '^typedef u64[[:space:]]+__(u64|le64|be64);$' \
+            deps/erofs-utils/include/erofs/defs.h
 
       # ============================================================
       # 08. ANDROID 14 HOST BUILD PATCH
