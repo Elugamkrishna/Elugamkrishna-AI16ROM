@@ -19,9 +19,9 @@
 
 #include "update_engine/payload_generator/filesystem_interface.h"
 #include "update_engine/payload_generator/delta_diff_generator.h"
-#include <erofs/internal.h>
 
 
+struct erofs_sb_info;
 namespace chromeos_update_engine {
 
 class ErofsFilesystem final : public FilesystemInterface {
