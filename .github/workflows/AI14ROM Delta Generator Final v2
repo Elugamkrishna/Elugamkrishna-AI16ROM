@@ -1,0 +1,523 @@
+name: AI14ROM Delta Generator Final
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build delta_generator
+    runs-on: ubuntu-24.04
+
+    steps:
+
+      # ============================================================
+      # 01 - CHECKOUT
+      # ============================================================
+
+      - name: Checkout AI14ROM
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      # ============================================================
+      # 02 - VERIFY REPOSITORY
+      # ============================================================
+
+      - name: Verify repository
+        shell: bash
+        run: |
+          set -euxo pipefail
+
+          echo "========================================"
+          echo " AI14ROM DELTA GENERATOR"
+          echo " ANDROID 14 HOST BUILD"
+          echo "========================================"
+
+          git rev-parse HEAD
+          git log -1 --oneline
+
+          test -d ota_tool
+          test -d ota_tool/full_build
+          test -f ota_tool/full_build/CMakeLists.txt
+
+          echo
+          echo "REPOSITORY OK"
+
+      # ============================================================
+      # 03 - HOST DEPENDENCIES
+      # ============================================================
+
+      - name: Install build dependencies
+        shell: bash
+        run: |
+          set -euxo pipefail
+
+          sudo apt-get update
+
+          sudo apt-get install -y \
+            build-essential \
+            clang \
+            lld \
+            cmake \
+            ninja-build \
+            pkg-config \
+            git \
+            curl \
+            wget \
+            rsync \
+            unzip \
+            zip \
+            python3 \
+            python3-pip \
+            libssl-dev \
+            libevent-dev \
+            liblz4-dev \
+            liblzma-dev \
+            libzstd-dev \
+            zlib1g-dev \
+            libbz2-dev \
+            libbrotli-dev \
+            libgflags-dev \
+            libgtest-dev \
+            libext2fs-dev
+
+          echo
+          clang --version | head -1
+          cmake --version | head -1
+          ninja --version
+
+      # ============================================================
+      # 04 - OTA DEPENDENCIES
+      # ============================================================
+
+      - name: Prepare OTA dependencies
+        shell: bash
+        run: |
+          set -euxo pipefail
+
+          cd ota_tool
+
+          mkdir -p deps
+
+          clone_branch() {
+            local name="$1"
+            local branch="$2"
+            local url="$3"
+
+            rm -rf "deps/$name"
+
+            git clone \
+              --depth=1 \
+              --branch "$branch" \
+              "$url" \
+              "deps/$name"
+          }
+
+          clone_main() {
+            local name="$1"
+            local url="$2"
+
+            rm -rf "deps/$name"
+
+            git clone \
+              --depth=1 \
+              "$url" \
+              "deps/$name"
+          }
+
+          clone_branch libbase \
+            android14-release \
+            https://android.googlesource.com/platform/system/libbase
+
+          clone_branch libchrome \
+            android14-release \
+            https://android.googlesource.com/platform/external/libchrome
+
+          clone_branch libbrillo \
+            android14-release \
+            https://android.googlesource.com/platform/external/libbrillo
+
+          clone_branch system_core \
+            android14-release \
+            https://android.googlesource.com/platform/system/core
+
+          clone_branch system_extras \
+            android14-release \
+            https://android.googlesource.com/platform/system/extras
+
+          clone_branch external_avb \
+            android14-release \
+            https://android.googlesource.com/platform/external/avb
+
+          clone_main gflags \
+            https://android.googlesource.com/platform/external/gflags
+
+          clone_main googletest \
+            https://android.googlesource.com/platform/external/googletest
+
+          clone_main puffin \
+            https://android.googlesource.com/platform/external/puffin
+
+          clone_main bsdiff \
+            https://android.googlesource.com/platform/external/bsdiff
+
+          clone_main zucchini \
+            https://android.googlesource.com/platform/external/zucchini
+
+          clone_branch erofs-utils \
+            android-14.0.0_r61 \
+            https://android.googlesource.com/platform/external/erofs-utils
+
+          clone_main lzma \
+            https://android.googlesource.com/platform/external/lzma
+
+          echo
+          echo "DEPENDENCIES READY"
+
+      # ============================================================
+      # 05 - GFLAGS
+      # ============================================================
+
+      - name: Build gflags
+        shell: bash
+        run: |
+          set -euxo pipefail
+
+          cd ota_tool
+
+          rm -rf gflags_build
+          rm -rf deps/gflags_install
+
+          cmake \
+            -S deps/gflags \
+            -B gflags_build \
+            -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DBUILD_SHARED_LIBS=OFF \
+            -DGFLAGS_BUILD_TESTING=OFF \
+            -DCMAKE_INSTALL_PREFIX="$PWD/deps/gflags_install"
+
+          cmake \
+            --build gflags_build \
+            --parallel 2
+
+          cmake \
+            --build gflags_build \
+            --target install
+
+          test -f deps/gflags_install/lib/libgflags.a
+
+          echo "GFLAGS OK"
+
+      # ============================================================
+      # 06 - PROTOBUF
+      # ============================================================
+
+      - name: Build Protobuf
+        shell: bash
+        run: |
+          set -euxo pipefail
+
+          cd ota_tool
+
+          rm -rf deps/protobuf
+          rm -rf protobuf_build
+          rm -rf deps/protobuf_install
+
+          git clone \
+            --depth=1 \
+            --branch v35.1 \
+            https://github.com/protocolbuffers/protobuf.git \
+            deps/protobuf
+
+          cmake \
+            -S deps/protobuf \
+            -B protobuf_build \
+            -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -Dprotobuf_BUILD_TESTS=OFF \
+            -Dprotobuf_BUILD_SHARED_LIBS=OFF \
+            -Dprotobuf_BUILD_LIBPROTOC=ON \
+            -Dprotobuf_BUILD_PROTOC_BINARIES=ON \
+            -DCMAKE_INSTALL_PREFIX="$PWD/deps/protobuf_install"
+
+          cmake \
+            --build protobuf_build \
+            --parallel 2
+
+          cmake \
+            --build protobuf_build \
+            --target install
+
+          test -x deps/protobuf_install/bin/protoc
+          test -f deps/protobuf_install/lib/libprotobuf.a
+
+          deps/protobuf_install/bin/protoc --version
+
+      # ============================================================
+      # 07 - EROFS HOST CONFIG
+      # ============================================================
+
+      - name: Prepare EROFS
+        shell: bash
+        run: |
+          set -euxo pipefail
+
+          cd ota_tool
+
+          mkdir -p deps/erofs-utils/include
+
+          cat > deps/erofs-utils/include/config.h <<'EOF'
+          #pragma once
+          #define PACKAGE_VERSION "1.8"
+          #define HAVE_MEMRCHR 1
+          #define HAVE_MKSTEMP 1
+          #define HAVE_FTRUNCATE 1
+          #define HAVE_PREAD 1
+          #define HAVE_PWRITE 1
+          #define HAVE_POSIX_FALLOCATE 1
+          EOF
+
+          sed -i \
+            -e '/^[[:space:]]*typedef u64[[:space:]]*__u64;$/d' \
+            -e '/^[[:space:]]*typedef u64[[:space:]]*__le64;$/d' \
+            -e '/^[[:space:]]*typedef u64[[:space:]]*__be64;$/d' \
+            deps/erofs-utils/include/erofs/defs.h || true
+
+          echo "EROFS READY"
+
+      # ============================================================
+      # 08 - PATCH LIBCHROME HOST COMPATIBILITY
+      # ============================================================
+
+      - name: Patch libchrome host compatibility
+        shell: bash
+        run: |
+          set -euxo pipefail
+
+          cd ota_tool
+
+          HEADER="deps/libchrome/base/trace_event/memory_dump_manager.h"
+
+          if [ -f "$HEADER" ]; then
+            if ! grep -q 'base/trace_event/trace_config.h' "$HEADER"; then
+              sed -i \
+                '/#include "base\/trace_event\/trace_event.h"/a #include "base/trace_event/trace_config.h"' \
+                "$HEADER"
+            fi
+          fi
+
+          echo "TraceConfig include verified"
+
+      # ============================================================
+      # 09 - PATCH CMAKE FOR HOST BUILD
+      # ============================================================
+
+      - name: Patch CMake for delta_generator
+        shell: bash
+        run: |
+          set -euxo pipefail
+
+          cd ota_tool/full_build
+
+          python3 <<'PY'
+          from pathlib import Path
+          import re
+
+          p = Path("CMakeLists.txt")
+          s = p.read_text()
+
+          # Android host marker
+          if "__ANDROID_HOST__" not in s:
+              marker = "target_compile_definitions(delta_generator PRIVATE"
+              if marker in s:
+                  s = s.replace(
+                      marker,
+                      marker + "\n  __ANDROID_HOST__",
+                      1
+                  )
+
+          # Remove known incompatible Android-only/ChromeOS sources
+          remove_sources = [
+              "base/memory/platform_shared_memory_region_posix.cc",
+              "base/memory/memory_pressure_monitor_chromeos.cc",
+          ]
+
+          for src in remove_sources:
+              s = re.sub(
+                  r'^[ \t]*.*' + re.escape(src) + r'.*\n?',
+                  '',
+                  s,
+                  flags=re.MULTILINE
+              )
+
+          # Remove performance/test sources from production target
+          s = re.sub(
+              r'^[ \t]*.*json_perftest\.cc.*\n?',
+              '',
+              s,
+              flags=re.MULTILINE
+          )
+
+          s = re.sub(
+              r'^[ \t]*.*_perftest\.cc.*\n?',
+              '',
+              s,
+              flags=re.MULTILINE
+          )
+
+          # Remove ordinary unit-test sources
+          s = re.sub(
+              r'^[ \t]*.*_test\.cc.*\n?',
+              '',
+              s,
+              flags=re.MULTILINE
+          )
+
+          # Remove libchrome ChromeOS memory monitor sources
+          s = re.sub(
+              r'^[ \t]*.*memory_pressure_monitor_chromeos\.cc.*\n?',
+              '',
+              s,
+              flags=re.MULTILINE
+          )
+
+          p.write_text(s)
+
+          print("CMAKE HOST PATCH COMPLETE")
+          PY
+
+          echo
+          echo "VERIFY EXCLUSIONS"
+
+          ! grep -n "platform_shared_memory_region_posix.cc" CMakeLists.txt || true
+          ! grep -n "memory_pressure_monitor_chromeos.cc" CMakeLists.txt || true
+          ! grep -n "json_perftest.cc" CMakeLists.txt || true
+
+      # ============================================================
+      # 10 - GENERATE / CONFIGURE
+      # ============================================================
+
+      - name: Configure delta_generator
+        shell: bash
+        run: |
+          set -euxo pipefail
+
+          cd ota_tool/full_build
+
+          rm -rf clean_build
+
+          PROTOBUF_ROOT="$PWD/../deps/protobuf_install"
+          GFLAGS_ROOT="$PWD/../deps/gflags_install"
+
+          export PATH="$PROTOBUF_ROOT/bin:$PATH"
+
+          cmake \
+            -S . \
+            -B clean_build \
+            -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_C_COMPILER=clang \
+            -DCMAKE_CXX_COMPILER=clang++ \
+            -DCMAKE_CXX_STANDARD=20 \
+            -DCMAKE_CXX_FLAGS="-include cstdint -D__ANDROID_HOST__" \
+            -DCMAKE_C_FLAGS="-D__ANDROID_HOST__" \
+            -DCMAKE_PREFIX_PATH="$PROTOBUF_ROOT;$GFLAGS_ROOT" \
+            -DProtobuf_ROOT="$PROTOBUF_ROOT" \
+            -DProtobuf_DIR="$PROTOBUF_ROOT/lib/cmake/protobuf" \
+            -DProtobuf_INCLUDE_DIR="$PROTOBUF_ROOT/include" \
+            -DProtobuf_LIBRARY="$PROTOBUF_ROOT/lib/libprotobuf.a" \
+            -DProtobuf_LITE_LIBRARY="$PROTOBUF_ROOT/lib/libprotobuf-lite.a" \
+            -DProtobuf_PROTOC_EXECUTABLE="$PROTOBUF_ROOT/bin/protoc"
+
+          echo
+          echo "CMAKE CONFIGURE SUCCESS"
+
+      # ============================================================
+      # 11 - BUILD DELTA GENERATOR
+      # ============================================================
+
+      - name: Compile delta_generator
+        shell: bash
+        run: |
+          set -o pipefail
+
+          cd ota_tool/full_build
+
+          echo
+          echo "========================================"
+          echo " COMPILING delta_generator "
+          echo "========================================"
+
+          cmake \
+            --build clean_build \
+            --target delta_generator \
+            --parallel 2 \
+            2>&1 | tee delta_generator_build.log
+
+      # ============================================================
+      # 12 - VERIFY
+      # ============================================================
+
+      - name: Verify delta_generator
+        if: success()
+        shell: bash
+        run: |
+          set -euxo pipefail
+
+          BIN="ota_tool/full_build/clean_build/delta_generator"
+
+          test -x "$BIN"
+
+          echo
+          echo "========================================"
+          echo " DELTA GENERATOR COMPILE SUCCESS "
+          echo "========================================"
+
+          ls -lh "$BIN"
+
+          echo
+          file "$BIN"
+
+          echo
+          sha256sum "$BIN"
+
+          echo
+          "$BIN" --help || true
+
+      # ============================================================
+      # 13 - UPLOAD SUCCESS ARTIFACT
+      # ============================================================
+
+      - name: Upload delta_generator
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: AI14ROM-delta-generator-final
+          path: |
+            ota_tool/full_build/clean_build/delta_generator
+            ota_tool/full_build/delta_generator_build.log
+          if-no-files-found: error
+          retention-days: 30
+
+      # ============================================================
+      # 14 - UPLOAD FAILURE LOG
+      # ============================================================
+
+      - name: Upload failure logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: AI14ROM-delta-generator-failure-log
+          path: |
+            ota_tool/full_build/delta_generator_build.log
+            ota_tool/full_build/clean_build/CMakeCache.txt
+            ota_tool/full_build/clean_build/.ninja_log
+          if-no-files-found: ignore
+          retention-days: 14
