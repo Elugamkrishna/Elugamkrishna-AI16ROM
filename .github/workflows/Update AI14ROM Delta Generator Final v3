@@ -1,4 +1,4 @@
-name: AI14ROM Delta Generator Final
+name: AI14ROM Delta Generator Final v3
 
 on:
   workflow_dispatch:
@@ -26,7 +26,7 @@ jobs:
           fetch-depth: 1
 
       # ============================================================
-      # 02 - VERIFY REPOSITORY
+      # 02 - VERIFY
       # ============================================================
 
       - name: Verify repository
@@ -46,7 +46,6 @@ jobs:
           test -d ota_tool/full_build
           test -f ota_tool/full_build/CMakeLists.txt
 
-          echo
           echo "REPOSITORY OK"
 
       # ============================================================
@@ -178,7 +177,28 @@ jobs:
             https://android.googlesource.com/platform/external/lzma
 
           echo
+          echo "========================================"
           echo "DEPENDENCIES READY"
+          echo "========================================"
+
+          for d in \
+            libbase \
+            libchrome \
+            libbrillo \
+            system_core \
+            system_extras \
+            external_avb \
+            gflags \
+            googletest \
+            puffin \
+            bsdiff \
+            zucchini \
+            erofs-utils \
+            lzma
+          do
+            test -d "deps/$d"
+            echo "OK: deps/$d"
+          done
 
       # ============================================================
       # 05 - GFLAGS
@@ -219,7 +239,7 @@ jobs:
       # 06 - PROTOBUF
       # ============================================================
 
-      - name: Build Protobuf
+      - name: Build Protobuf 35.1
         shell: bash
         run: |
           set -euxo pipefail
@@ -261,7 +281,7 @@ jobs:
           deps/protobuf_install/bin/protoc --version
 
       # ============================================================
-      # 07 - EROFS HOST CONFIG
+      # 07 - EROFS
       # ============================================================
 
       - name: Prepare EROFS
@@ -275,6 +295,7 @@ jobs:
 
           cat > deps/erofs-utils/include/config.h <<'EOF'
           #pragma once
+
           #define PACKAGE_VERSION "1.8"
           #define HAVE_MEMRCHR 1
           #define HAVE_MKSTEMP 1
@@ -293,7 +314,7 @@ jobs:
           echo "EROFS READY"
 
       # ============================================================
-      # 08 - PATCH LIBCHROME HOST COMPATIBILITY
+      # 08 - LIBCHROME HOST COMPATIBILITY
       # ============================================================
 
       - name: Patch libchrome host compatibility
@@ -303,23 +324,111 @@ jobs:
 
           cd ota_tool
 
+          echo "========================================"
+          echo "LIBCHROME HOST COMPATIBILITY"
+          echo "========================================"
+
+          # --------------------------------------------------------
+          # FIX 1: TraceConfig declaration
+          # --------------------------------------------------------
+
           HEADER="deps/libchrome/base/trace_event/memory_dump_manager.h"
 
-          if [ -f "$HEADER" ]; then
-            if ! grep -q 'base/trace_event/trace_config.h' "$HEADER"; then
-              sed -i \
-                '/#include "base\/trace_event\/trace_event.h"/a #include "base/trace_event/trace_config.h"' \
-                "$HEADER"
-            fi
+          test -f "$HEADER"
+
+          if ! grep -q 'base/trace_event/trace_config.h' "$HEADER"; then
+            sed -i \
+              '/#include "base\/trace_event\/trace_event.h"/a #include "base/trace_event/trace_config.h"' \
+              "$HEADER"
           fi
 
-          echo "TraceConfig include verified"
+          # --------------------------------------------------------
+          # FIX 2: portable atomic fence
+          # --------------------------------------------------------
+
+          ATOMIC="deps/libchrome/base/atomicops_internals_portable.h"
+
+          test -f "$ATOMIC"
+
+          sed -i \
+            's/__atomic_thread_fence(std::memory_order_seq_cst);/std::atomic_thread_fence(std::memory_order_seq_cst);/g' \
+            "$ATOMIC"
+
+          # --------------------------------------------------------
+          # FIX 3: Android message pump is not required for host
+          # --------------------------------------------------------
+
+          echo "Checking Android message pump source"
+
+          if grep -R -q "message_pump_android.cc" \
+              deps/libchrome/base 2>/dev/null; then
+            echo "Android message pump source exists; host CMake will exclude it"
+          fi
+
+          # --------------------------------------------------------
+          # FIX 4: Android shared memory POSIX implementation
+          # --------------------------------------------------------
+
+          if grep -R -q "platform_shared_memory_region_posix.cc" \
+              full_build/CMakeLists.txt 2>/dev/null; then
+            sed -i \
+              '/platform_shared_memory_region_posix\.cc/d' \
+              full_build/CMakeLists.txt
+          fi
+
+          # --------------------------------------------------------
+          # FIX 5: ChromeOS memory monitor
+          # --------------------------------------------------------
+
+          sed -i \
+            '/memory_pressure_monitor_chromeos\.cc/d' \
+            full_build/CMakeLists.txt || true
+
+          # --------------------------------------------------------
+          # FIX 6: Android message pump
+          # --------------------------------------------------------
+
+          sed -i \
+            '/message_pump_android\.cc/d' \
+            full_build/CMakeLists.txt || true
+
+          # --------------------------------------------------------
+          # FIX 7: test/performance sources
+          # --------------------------------------------------------
+
+          sed -i \
+            '/json_perftest\.cc/d' \
+            full_build/CMakeLists.txt || true
+
+          sed -i \
+            '/_perftest\.cc/d' \
+            full_build/CMakeLists.txt || true
+
+          # Remove ordinary unit-test source entries.
+          sed -i \
+            '/[A-Za-z0-9_\/-]\+_test\.cc/d' \
+            full_build/CMakeLists.txt || true
+
+          echo
+          echo "TRACE CONFIG:"
+          grep -n \
+            'trace_config.h' \
+            "$HEADER"
+
+          echo
+          echo "ATOMIC:"
+          grep -n \
+            'atomic_thread_fence' \
+            "$ATOMIC"
+
+          echo
+          echo "LIBCHROME HOST PATCH COMPLETE"
 
       # ============================================================
-      # 09 - PATCH CMAKE FOR HOST BUILD
+      # 09 - ANDROID HOST CMAKE PATCH
       # ============================================================
 
-      - name: Patch CMake for delta_generator
+      - name: Patch Android 14 host CMake
         shell: bash
         run: |
           set -euxo pipefail
@@ -328,14 +437,14 @@ jobs:
 
           python3 <<'PY'
           from pathlib import Path
-          import re
 
           p = Path("CMakeLists.txt")
           s = p.read_text()
 
-          # Android host marker
+          # Android host definition
           if "__ANDROID_HOST__" not in s:
               marker = "target_compile_definitions(delta_generator PRIVATE"
+
               if marker in s:
                   s = s.replace(
                       marker,
@@ -343,65 +452,168 @@ jobs:
                       1
                   )
 
-          # Remove known incompatible Android-only/ChromeOS sources
-          remove_sources = [
-              "base/memory/platform_shared_memory_region_posix.cc",
-              "base/memory/memory_pressure_monitor_chromeos.cc",
+          # Generated protobuf sources
+          generated = [
+              '  "${CMAKE_CURRENT_BINARY_DIR}/gen/update_engine/update_metadata.pb.cc"\n',
+              '  "${CMAKE_CURRENT_BINARY_DIR}/gen/lz4diff/lz4diff.pb.cc"\n',
           ]
 
-          for src in remove_sources:
-              s = re.sub(
-                  r'^[ \t]*.*' + re.escape(src) + r'.*\n?',
-                  '',
-                  s,
-                  flags=re.MULTILINE
-              )
+          if "update_metadata.pb.cc" not in s:
+              marker = "set(GENERATED_PROTO"
 
-          # Remove performance/test sources from production target
-          s = re.sub(
-              r'^[ \t]*.*json_perftest\.cc.*\n?',
-              '',
-              s,
-              flags=re.MULTILINE
-          )
+              if marker in s:
+                  pos = s.find(marker)
+                  end = s.find(")", pos)
 
-          s = re.sub(
-              r'^[ \t]*.*_perftest\.cc.*\n?',
-              '',
-              s,
-              flags=re.MULTILINE
-          )
+                  if end != -1:
+                      s = (
+                          s[:end]
+                          + "\n"
+                          + "".join(generated)
+                          + s[end:]
+                      )
 
-          # Remove ordinary unit-test sources
-          s = re.sub(
-              r'^[ \t]*.*_test\.cc.*\n?',
-              '',
-              s,
-              flags=re.MULTILINE
-          )
+          # Remove incompatible sources robustly.
+          blocked = [
+              "message_pump_android.cc",
+              "platform_shared_memory_region_posix.cc",
+              "memory_pressure_monitor_chromeos.cc",
+              "json_perftest.cc",
+          ]
 
-          # Remove libchrome ChromeOS memory monitor sources
-          s = re.sub(
-              r'^[ \t]*.*memory_pressure_monitor_chromeos\.cc.*\n?',
-              '',
-              s,
-              flags=re.MULTILINE
-          )
+          lines = []
+
+          for line in s.splitlines(True):
+              if any(x in line for x in blocked):
+                  continue
+              lines.append(line)
+
+          s = "".join(lines)
 
           p.write_text(s)
 
-          print("CMAKE HOST PATCH COMPLETE")
+          print("ANDROID HOST CMAKE PATCH COMPLETE")
           PY
 
           echo
-          echo "VERIFY EXCLUSIONS"
+          echo "========================================"
+          echo "VERIFY CMAKE EXCLUSIONS"
+          echo "========================================"
 
-          ! grep -n "platform_shared_memory_region_posix.cc" CMakeLists.txt || true
-          ! grep -n "memory_pressure_monitor_chromeos.cc" CMakeLists.txt || true
-          ! grep -n "json_perftest.cc" CMakeLists.txt || true
+          if grep -n "message_pump_android.cc" CMakeLists.txt; then
+            echo "ERROR: message_pump_android.cc remains"
+            exit 1
+          fi
+
+          if grep -n "platform_shared_memory_region_posix.cc" CMakeLists.txt; then
+            echo "ERROR: platform_shared_memory_region_posix.cc remains"
+            exit 1
+          fi
+
+          if grep -n "memory_pressure_monitor_chromeos.cc" CMakeLists.txt; then
+            echo "ERROR: ChromeOS source remains"
+            exit 1
+          fi
+
+          echo "HOST SOURCE EXCLUSIONS OK"
 
       # ============================================================
-      # 10 - GENERATE / CONFIGURE
+      # 10 - LIBBRILLO HOST SOURCES
+      # ============================================================
+
+      - name: Complete libbrillo host sources
+        shell: bash
+        run: |
+          set -euxo pipefail
+
+          cd ota_tool/full_build
+
+          python3 <<'PY'
+          from pathlib import Path
+
+          p = Path("CMakeLists.txt")
+          s = p.read_text()
+
+          sources = [
+              "brillo/backoff_entry.cc",
+              "brillo/errors/error.cc",
+              "brillo/errors/error_codes.cc",
+              "brillo/flag_helper.cc",
+              "brillo/message_loops/message_loop_utils.cc",
+              "brillo/mime_utils.cc",
+              "brillo/osrelease_reader.cc",
+              "brillo/process_information.cc",
+              "brillo/secure_blob.cc",
+              "brillo/syslog_logging.cc",
+              "brillo/type_name_undecorate.cc",
+              "brillo/url_utils.cc",
+              "brillo/userdb_utils.cc",
+              "brillo/value_conversion.cc",
+              "brillo/streams/input_stream_set.cc",
+              "brillo/streams/memory_containers.cc",
+              "brillo/streams/memory_stream.cc",
+              "brillo/streams/stream_errors.cc",
+              "brillo/streams/stream_utils.cc",
+          ]
+
+          for src in sources:
+              full = Path("../deps/libbrillo") / src
+
+              if not full.exists():
+                  continue
+
+              cmake_path = "${ROOT}/deps/libbrillo/" + src
+
+              if cmake_path not in s:
+                  anchor = (
+                      '  "${ROOT}/deps/libbrillo/brillo/file_utils.cc"\n'
+                  )
+
+                  if anchor in s:
+                      s = s.replace(
+                          anchor,
+                          anchor + f'  "{cmake_path}"\n',
+                          1
+                      )
+
+          p.write_text(s)
+
+          print("LIBBRILLO HOST SOURCES COMPLETE")
+          PY
+
+      # ============================================================
+      # 11 - FINAL AUDIT
+      # ============================================================
+
+      - name: Final build configuration audit
+        shell: bash
+        run: |
+          set -euxo pipefail
+
+          cd ota_tool/full_build
+
+          echo "========================================"
+          echo "FINAL CMAKE AUDIT"
+          echo "========================================"
+
+          grep -q "__ANDROID_HOST__" CMakeLists.txt
+
+          if grep -n "message_pump_android.cc" CMakeLists.txt; then
+            exit 1
+          fi
+
+          if grep -n "platform_shared_memory_region_posix.cc" CMakeLists.txt; then
+            exit 1
+          fi
+
+          if grep -n "memory_pressure_monitor_chromeos.cc" CMakeLists.txt; then
+            exit 1
+          fi
+
+          echo "FINAL AUDIT OK"
+
+      # ============================================================
+      # 12 - CONFIGURE
       # ============================================================
 
       - name: Configure delta_generator
@@ -415,6 +627,10 @@ jobs:
 
           PROTOBUF_ROOT="$PWD/../deps/protobuf_install"
           GFLAGS_ROOT="$PWD/../deps/gflags_install"
+
+          test -x "$PROTOBUF_ROOT/bin/protoc"
+          test -f "$PROTOBUF_ROOT/lib/libprotobuf.a"
+          test -f "$GFLAGS_ROOT/lib/libgflags.a"
 
           export PATH="$PROTOBUF_ROOT/bin:$PATH"
 
@@ -440,7 +656,7 @@ jobs:
           echo "CMAKE CONFIGURE SUCCESS"
 
       # ============================================================
-      # 11 - BUILD DELTA GENERATOR
+      # 13 - BUILD
       # ============================================================
 
       - name: Compile delta_generator
@@ -462,7 +678,7 @@ jobs:
             2>&1 | tee delta_generator_build.log
 
       # ============================================================
-      # 12 - VERIFY
+      # 14 - VERIFY
       # ============================================================
 
       - name: Verify delta_generator
@@ -483,16 +699,19 @@ jobs:
           ls -lh "$BIN"
 
           echo
+          echo "FILE:"
           file "$BIN"
 
           echo
+          echo "SHA256:"
           sha256sum "$BIN"
 
           echo
+          echo "HELP:"
           "$BIN" --help || true
 
       # ============================================================
-      # 13 - UPLOAD SUCCESS ARTIFACT
+      # 15 - SUCCESS ARTIFACT
       # ============================================================
 
       - name: Upload delta_generator
@@ -507,7 +726,7 @@ jobs:
           retention-days: 30
 
       # ============================================================
-      # 14 - UPLOAD FAILURE LOG
+      # 16 - FAILURE LOG
       # ============================================================
 
       - name: Upload failure logs
