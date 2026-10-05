@@ -385,6 +385,17 @@ jobs:
           # FIX 3: portable atomic fence
           # --------------------------------------------------------
 
+          # --------------------------------------------------------
+          # FIX 4: libbrillo S_BLKSIZE clashes with glibc sys/stat.h
+          # --------------------------------------------------------
+          FILE_UTILS="deps/libbrillo/brillo/file_utils.cc"
+          test -f "$FILE_UTILS"
+          sed -i 's/constexpr size_t S_BLKSIZE = 512;/constexpr size_t kBrilloSBlkSize = 512;/' "$FILE_UTILS"
+          sed -i 's/\bS_BLKSIZE\b/kBrilloSBlkSize/g' "$FILE_UTILS"
+
+          echo "FILE_UTILS S_BLKSIZE PATCH:"
+          grep -n -A2 -B2 'kBrilloSBlkSize' "$FILE_UTILS"
+
           ATOMIC="deps/libchrome/base/atomicops_internals_portable.h"
 
           test -f "$ATOMIC"
