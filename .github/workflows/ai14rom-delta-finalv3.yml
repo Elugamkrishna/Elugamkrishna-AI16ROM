@@ -146,6 +146,10 @@ jobs:
             android14-release \
             https://android.googlesource.com/platform/system/core
 
+          clone_branch system_logging \
+            android14-d1-release \
+            https://android.googlesource.com/platform/system/logging
+
           clone_branch system_extras \
             android14-release \
             https://android.googlesource.com/platform/system/extras
@@ -190,6 +194,9 @@ jobs:
           test -f deps/fec/fec.h
           echo "OK: deps/fec/fec.h"
 
+          test -f deps/system_logging/liblog/include/android/log.h
+          echo "OK: deps/system_logging/liblog/include/android/log.h"
+
           echo
           echo "========================================"
           echo "DEPENDENCIES READY"
@@ -200,6 +207,7 @@ jobs:
             libchrome \
             libbrillo \
             system_core \
+            system_logging \
             system_extras \
             external_fec \
             external_avb \
