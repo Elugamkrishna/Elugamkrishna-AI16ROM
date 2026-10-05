@@ -370,37 +370,16 @@ jobs:
           # --------------------------------------------------------
 
           STRERROR="deps/libbase/posix_strerror_r.cpp"
-
           test -f "$STRERROR"
 
-          # Android libbase expects the POSIX/XSI strerror_r(int) variant.
-          # Ubuntu/glibc exposes the GNU char* variant when _GNU_SOURCE is enabled.
+          # Force the POSIX/XSI strerror_r declaration on the Ubuntu host.
           sed -i '/^#include <string.h>/i #undef _GNU_SOURCE' "$STRERROR"
 
-          python3 - "$STRERROR" <<'PYSTR'
-from pathlib import Path
-import sys
-
-p = Path(sys.argv[1])
-s = p.read_text()
-
-old = "return strerror_r(errnum, buf, buflen);"
-new = """char* result = strerror_r(errnum, buf, buflen);
-  if (result != buf) {
-    std::strncpy(buf, result, buflen);
-    if (buflen > 0)
-      buf[buflen - 1] = '\\0';
-  }
-  return 0;"""
-
-if old not in s:
-    raise SystemExit("ERROR: strerror_r return line not found")
-
-p.write_text(s.replace(old, new, 1))
-PYSTR
+          # Replace Android libbase's POSIX-return assumption with the GNU host variant.
+          sed -i 's/return strerror_r(errnum, buf, buflen);/char* result = strerror_r(errnum, buf, buflen); if (result != buf) { std::strncpy(buf, result, buflen); if (buflen > 0) buf[buflen - 1] = 0; } return 0;/' "$STRERROR"
 
           echo "STRERROR_R PATCH:"
-          grep -n -A8 -B3 'strerror_r(errnum' "$STRERROR"
+          grep -n -A5 -B3 'strerror_r(errnum' "$STRERROR"
 
           # --------------------------------------------------------
           # FIX 3: portable atomic fence
