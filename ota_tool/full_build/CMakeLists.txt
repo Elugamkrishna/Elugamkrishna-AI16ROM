@@ -38,6 +38,7 @@ include_directories("../deps/fec")
   "${CMAKE_CURRENT_SOURCE_DIR}/gen"
   "${ROOT}/deps/erofs-utils/include"
   "${ROOT}/deps/system_core/libutils/include"
+  "${ROOT}/deps/system_core/liblog/include"
   "${ROOT}/deps/system_core/libcutils/include"
   "${ROOT}/deps/system_core/fs_mgr/libsnapshot/include"
   "${ROOT}/deps/system_core/libcrypto_utils/include"
