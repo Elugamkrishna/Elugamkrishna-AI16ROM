@@ -634,6 +634,32 @@ jobs:
       # 12 - CONFIGURE
       # ============================================================
 
+      - name: Prepare XZ compatibility headers
+        shell: bash
+        run: |
+          set -euxo pipefail
+
+          cd ota_tool/full_build
+
+          echo "========================================"
+          echo " PREPARE XZ COMPATIBILITY HEADERS"
+          echo "========================================"
+
+          test -f gen/xz.h
+          test -f gen/xz_compat.h
+
+          mkdir -p clean_build/gen
+
+          cp -f gen/xz.h clean_build/gen/xz.h
+          cp -f gen/xz_compat.h clean_build/gen/xz_compat.h
+
+          test -f clean_build/gen/xz.h
+          test -f clean_build/gen/xz_compat.h
+
+          echo "XZ COMPATIBILITY HEADERS READY"
+          ls -l gen/xz.h gen/xz_compat.h
+          ls -l clean_build/gen/xz.h clean_build/gen/xz_compat.h
+
       - name: Configure delta_generator
         shell: bash
         run: |
