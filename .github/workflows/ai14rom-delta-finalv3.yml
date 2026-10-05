@@ -180,15 +180,16 @@ jobs:
 
           echo "===== NORMALIZE BSDIFF HEADERS ====="
           mkdir -p deps/bsdiff/include/bsdiff
-          if test -f deps/bsdiff/diff_encoder.h; then
-            cp -f deps/bsdiff/diff_encoder.h deps/bsdiff/include/bsdiff/diff_encoder.h
-          fi
-          if test -f deps/bsdiff/patch_writer_interface.h; then
-            cp -f deps/bsdiff/patch_writer_interface.h deps/bsdiff/include/bsdiff/patch_writer_interface.h
-          fi
-          if test -f deps/bsdiff/bz2_compressor.h; then
-            cp -f deps/bsdiff/bz2_compressor.h deps/bsdiff/include/bsdiff/bz2_compressor.h
-          fi
+
+          find deps/bsdiff -maxdepth 1 -type f -name '*.h' -exec cp -f {} deps/bsdiff/include/bsdiff/ \;
+
+          test -f deps/bsdiff/include/bsdiff/diff_encoder.h
+          test -f deps/bsdiff/include/bsdiff/compressor_buffer.h
+          test -f deps/bsdiff/include/bsdiff/compressor_interface.h
+
+          echo "BSDIFF HEADERS:"
+          find deps/bsdiff/include/bsdiff -maxdepth 1 -type f -name '*.h' -printf '%f\n' | sort
+
 
           test -f deps/bsdiff/include/bsdiff/diff_encoder.h
           echo "OK: deps/bsdiff/include/bsdiff/diff_encoder.h"
