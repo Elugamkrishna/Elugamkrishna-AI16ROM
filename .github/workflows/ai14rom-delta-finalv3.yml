@@ -376,7 +376,7 @@ jobs:
           sed -i '/^#include <string.h>/i #undef _GNU_SOURCE' "$STRERROR"
 
           # Replace Android libbase's POSIX-return assumption with the GNU host variant.
-          sed -i 's/return strerror_r(errnum, buf, buflen);/char* result = strerror_r(errnum, buf, buflen); if (result != buf) { std::strncpy(buf, result, buflen); if (buflen > 0) buf[buflen - 1] = 0; } return 0;/' "$STRERROR"
+          sed -i 's/return strerror_r(errnum, buf, buflen);/char* result = strerror_r(errnum, buf, buflen); if (result != buf) { strncpy(buf, result, buflen); if (buflen > 0) buf[buflen - 1] = 0; } return 0;/' "$STRERROR"
 
           echo "STRERROR_R PATCH:"
           grep -n -A5 -B3 'strerror_r(errnum' "$STRERROR"
