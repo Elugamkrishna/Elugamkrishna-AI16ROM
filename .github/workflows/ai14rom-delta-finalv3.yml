@@ -642,23 +642,31 @@ jobs:
           cd ota_tool/full_build
 
           echo "========================================"
-          echo " PREPARE XZ COMPATIBILITY HEADERS"
+          echo " PREPARE XZ COMPATIBILITY HEADER"
           echo "========================================"
+
+          test -f gen/xz_compat.h
+
+          # Git cannot preserve the local Termux absolute symlink.
+          # Create a real runner-local xz.h from the tracked compatibility header.
+          rm -f gen/xz.h
+          cp -f gen/xz_compat.h gen/xz.h
 
           test -f gen/xz.h
           test -f gen/xz_compat.h
 
-          mkdir -p clean_build/gen
-
-          cp -f gen/xz.h clean_build/gen/xz.h
-          cp -f gen/xz_compat.h clean_build/gen/xz_compat.h
-
-          test -f clean_build/gen/xz.h
-          test -f clean_build/gen/xz_compat.h
-
-          echo "XZ COMPATIBILITY HEADERS READY"
+          echo "===== XZ HEADER READY ====="
           ls -l gen/xz.h gen/xz_compat.h
-          ls -l clean_build/gen/xz.h clean_build/gen/xz_compat.h
+
+          echo "===== XZ HEADER TYPE ====="
+          file gen/xz.h
+
+          echo "===== XZ HEADER CHECK ====="
+          grep -q "#include <lzma.h>" gen/xz.h
+          grep -q "xz_dec_init" gen/xz.h
+          grep -q "xz_dec_run" gen/xz.h
+
+          echo "XZ COMPATIBILITY HEADER READY"
 
       - name: Configure delta_generator
         shell: bash
