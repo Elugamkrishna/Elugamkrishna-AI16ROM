@@ -637,6 +637,27 @@ jobs:
 
           export PATH="$PROTOBUF_ROOT/bin:$PATH"
 
+          # Generate protobuf sources before CMake configure
+          rm -rf clean_build
+          mkdir -p clean_build/gen/update_engine clean_build/gen/lz4diff
+
+          "$PROTOBUF_ROOT/bin/protoc" \
+            --cpp_out="$PWD/clean_build/gen" \
+            -I"$PWD/.." \
+            "$PWD/../update_engine/update_metadata.proto"
+
+          "$PROTOBUF_ROOT/bin/protoc" \
+            --cpp_out="$PWD/clean_build/gen" \
+            -I"$PWD/.." \
+            "$PWD/../update_engine/lz4diff/lz4diff.proto"
+
+          test -f clean_build/gen/update_engine/update_metadata.pb.cc
+          test -f clean_build/gen/lz4diff/lz4diff.pb.cc
+
+          echo "PROTOBUF SOURCES GENERATED"
+          ls -lh clean_build/gen/update_engine/update_metadata.pb.cc
+          ls -lh clean_build/gen/lz4diff/lz4diff.pb.cc
+
           cmake \
             -S . \
             -B clean_build \
