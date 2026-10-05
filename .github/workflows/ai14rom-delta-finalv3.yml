@@ -773,9 +773,12 @@ jobs:
             -I"$PWD/.." \
             "$PWD/../update_engine/update_metadata.proto"
 
+          # Puffin proto must be rooted at deps/ so generated files become:
+          # clean_build/gen/puffin/src/puffin.pb.cc
+          # clean_build/gen/puffin/src/puffin.pb.h
           "$PROTOBUF_ROOT/bin/protoc" \
             --cpp_out="$PWD/clean_build/gen" \
-            -I"$PWD/../deps/puffin" \
+            -I"$PWD/../deps" \
             "$PWD/../deps/puffin/src/puffin.proto"
 
           "$PROTOBUF_ROOT/bin/protoc" \
