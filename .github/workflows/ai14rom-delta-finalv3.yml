@@ -150,6 +150,10 @@ jobs:
             android14-release \
             https://android.googlesource.com/platform/system/extras
 
+          clone_branch external_fec \
+            android-platform-14.0.0_r31 \
+            https://android.googlesource.com/platform/external/fec
+
           clone_branch external_avb \
             android14-release \
             https://android.googlesource.com/platform/external/avb
@@ -178,6 +182,16 @@ jobs:
 
           echo
           echo "========================================"
+          echo "LIBFEC SETUP"
+          echo "========================================"
+
+          test -f deps/external_fec/fec.h
+          ln -sfn external_fec deps/fec
+          test -f deps/fec/fec.h
+          echo "OK: deps/fec/fec.h"
+
+          echo
+          echo "========================================"
           echo "DEPENDENCIES READY"
           echo "========================================"
 
@@ -187,6 +201,7 @@ jobs:
             libbrillo \
             system_core \
             system_extras \
+            external_fec \
             external_avb \
             gflags \
             googletest \
