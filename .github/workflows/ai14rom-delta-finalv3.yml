@@ -476,9 +476,12 @@ jobs:
           # Remove incompatible sources robustly.
           blocked = [
               "message_pump_android.cc",
+              "message_pump_glib.cc",
+              "message_pump_libevent.cc",
               "platform_shared_memory_region_posix.cc",
               "memory_pressure_monitor_chromeos.cc",
               "json_perftest.cc",
+              "trace_event_filter_test_utils.cc",
           ]
 
           lines = []
