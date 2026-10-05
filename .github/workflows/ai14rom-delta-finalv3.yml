@@ -366,7 +366,22 @@ jobs:
           fi
 
           # --------------------------------------------------------
-          # FIX 2: portable atomic fence
+          # FIX 2: POSIX strerror_r on glibc host
+          # --------------------------------------------------------
+
+          STRERROR="deps/libbase/posix_strerror_r.cpp"
+
+          test -f "$STRERROR"
+
+          if ! grep -q '^#undef _GNU_SOURCE' "$STRERROR"; then
+            sed -i '/^#include <string.h>/i #undef _GNU_SOURCE' "$STRERROR"
+          fi
+
+          echo "STRERROR_R:"
+          grep -n -B2 -A2 '_GNU_SOURCE' "$STRERROR"
+
+          # --------------------------------------------------------
+          # FIX 3: portable atomic fence
           # --------------------------------------------------------
 
           ATOMIC="deps/libchrome/base/atomicops_internals_portable.h"
