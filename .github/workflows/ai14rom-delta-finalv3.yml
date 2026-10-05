@@ -175,8 +175,23 @@ jobs:
             https://android.googlesource.com/platform/external/bsdiff
 
           echo "===== BSDIFF LAYOUT ====="
-          find deps/bsdiff -maxdepth 4 -type f \
+          find deps/bsdiff -maxdepth 5 -type f \
             \( -name 'diff_encoder.h' -o -name 'bsdiff.cc' \) -print
+
+          echo "===== NORMALIZE BSDIFF HEADERS ====="
+          mkdir -p deps/bsdiff/include/bsdiff
+          if test -f deps/bsdiff/diff_encoder.h; then
+            cp -f deps/bsdiff/diff_encoder.h deps/bsdiff/include/bsdiff/diff_encoder.h
+          fi
+          if test -f deps/bsdiff/patch_writer_interface.h; then
+            cp -f deps/bsdiff/patch_writer_interface.h deps/bsdiff/include/bsdiff/patch_writer_interface.h
+          fi
+          if test -f deps/bsdiff/bz2_compressor.h; then
+            cp -f deps/bsdiff/bz2_compressor.h deps/bsdiff/include/bsdiff/bz2_compressor.h
+          fi
+
+          test -f deps/bsdiff/include/bsdiff/diff_encoder.h
+          echo "OK: deps/bsdiff/include/bsdiff/diff_encoder.h"
 
           clone_main zucchini \
             https://android.googlesource.com/platform/external/zucchini
