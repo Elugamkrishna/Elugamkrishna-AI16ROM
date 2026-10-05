@@ -222,9 +222,9 @@ jobs:
           echo "LOCAL GLOG COMPATIBILITY"
           echo "========================================"
 
-          mkdir -p full_build/local_glog/glog
+          mkdir -p local_glog/glog
 
-          cat > full_build/local_glog/glog/logging.h <<'EOF'
+          cat > local_glog/glog/logging.h <<'EOF'
           #pragma once
 
           #include "base/logging.h"
@@ -238,8 +238,8 @@ jobs:
           #endif
           EOF
 
-          test -f full_build/local_glog/glog/logging.h
-          echo "OK: full_build/local_glog/glog/logging.h"
+          test -f local_glog/glog/logging.h
+          echo "OK: local_glog/glog/logging.h"
 
           echo "========================================"
           echo "DEPENDENCIES READY"
