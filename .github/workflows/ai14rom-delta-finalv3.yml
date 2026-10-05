@@ -766,7 +766,7 @@ jobs:
 
           # Generate protobuf sources before CMake configure
           rm -rf clean_build
-          mkdir -p clean_build/gen/update_engine clean_build/gen/lz4diff
+          mkdir -p clean_build/gen/update_engine clean_build/gen/lz4diff clean_build/gen/puffin/src
 
           "$PROTOBUF_ROOT/bin/protoc" \
             --cpp_out="$PWD/clean_build/gen" \
@@ -775,13 +775,22 @@ jobs:
 
           "$PROTOBUF_ROOT/bin/protoc" \
             --cpp_out="$PWD/clean_build/gen" \
+            -I"$PWD/../deps/puffin" \
+            "$PWD/../deps/puffin/src/puffin.proto"
+
+          "$PROTOBUF_ROOT/bin/protoc" \
+            --cpp_out="$PWD/clean_build/gen" \
             -I"$PWD/../update_engine" \
             "$PWD/../update_engine/lz4diff/lz4diff.proto"
 
           test -f clean_build/gen/update_engine/update_metadata.pb.cc
           test -f clean_build/gen/lz4diff/lz4diff.pb.cc
+          test -f clean_build/gen/puffin/src/puffin.pb.cc
+          test -f clean_build/gen/puffin/src/puffin.pb.h
 
           echo "PROTOBUF SOURCES GENERATED"
+          ls -lh clean_build/gen/puffin/src/puffin.pb.cc
+          ls -lh clean_build/gen/puffin/src/puffin.pb.h
           ls -lh clean_build/gen/update_engine/update_metadata.pb.cc
           ls -lh clean_build/gen/lz4diff/lz4diff.pb.cc
 
