@@ -35,6 +35,7 @@ include_directories("../deps/fec")
   "${ROOT}/deps/zucchini/aosp/include"
   "${ROOT}/deps/zucchini/aosp/include/components"
   "${ROOT}/deps/lzma/C"
+  "${CMAKE_CURRENT_SOURCE_DIR}/gen"
   "${ROOT}/deps/erofs-utils/include"
   "${ROOT}/deps/system_core/libutils/include"
   "${ROOT}/deps/system_core/libcutils/include"
