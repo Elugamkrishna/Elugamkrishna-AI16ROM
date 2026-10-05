@@ -648,7 +648,7 @@ jobs:
 
           "$PROTOBUF_ROOT/bin/protoc" \
             --cpp_out="$PWD/clean_build/gen" \
-            -I"$PWD/.." \
+            -I"$PWD/../update_engine" \
             "$PWD/../update_engine/lz4diff/lz4diff.proto"
 
           test -f clean_build/gen/update_engine/update_metadata.pb.cc
