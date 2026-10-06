@@ -150,6 +150,10 @@ jobs:
             android14-d1-release \
             https://android.googlesource.com/platform/system/logging
 
+          clone_branch libziparchive \
+            android14-release \
+            https://android.googlesource.com/platform/system/libziparchive
+
           clone_branch system_extras \
             android14-release \
             https://android.googlesource.com/platform/system/extras
@@ -221,6 +225,14 @@ jobs:
           test -f deps/system_logging/liblog/include/android/log.h
           echo "OK: deps/system_logging/liblog/include/android/log.h"
 
+          test -f deps/libziparchive/include/ziparchive/zip_archive.h
+          test -f deps/libziparchive/zip_archive.cc
+          test -f deps/libziparchive/zip_archive_stream_entry.cc
+          test -f deps/libziparchive/zip_cd_entry_map.cc
+          test -f deps/libziparchive/zip_error.cpp
+          test -f deps/libziparchive/zip_writer.cc
+          echo "OK: deps/libziparchive"
+
           test -f deps/external_boringssl/src/include/openssl/is_boringssl.h
           echo "OK: deps/external_boringssl/src/include/openssl/is_boringssl.h"
 
@@ -258,6 +270,7 @@ jobs:
             libbrillo \
             system_core \
             system_logging \
+            libziparchive \
             system_extras \
             external_fec \
             external_avb \
@@ -534,6 +547,90 @@ jobs:
             "$ATOMIC"
 
           echo
+          # --------------------------------------------------------
+          # FIX: libziparchive host build compatibility
+          # --------------------------------------------------------
+
+          ZIPARCHIVE="deps/libziparchive/zip_archive.cc"
+          ZIPARCHIVE_STREAM="deps/libziparchive/zip_archive_stream_entry.cc"
+          ZIPWRITER="deps/libziparchive/zip_writer.cc"
+
+          test -f "$ZIPARCHIVE"
+          test -f "$ZIPARCHIVE_STREAM"
+          test -f "$ZIPWRITER"
+
+          # Android FDSAN APIs are unavailable on the Ubuntu host.
+          # Keep them enabled for real Android builds, but exclude them
+          # from this host delta_generator build.
+          python3 - <<'PYZIP'
+from pathlib import Path
+
+p = Path("deps/libziparchive/zip_archive.cc")
+s = p.read_text()
+
+old = "#if defined(__BIONIC__)"
+new = "#if defined(__BIONIC__) && !defined(__ANDROID_HOST__)"
+
+count = s.count(old)
+
+if count:
+    s = s.replace(old, new)
+    p.write_text(s)
+    print(f"zip_archive.cc: patched {count} BIONIC guards")
+else:
+    if "__ANDROID_HOST__" not in s:
+        raise SystemExit("ERROR: expected BIONIC guards not found in zip_archive.cc")
+    print("zip_archive.cc: BIONIC guards already patched")
+
+PYZIP
+
+          # Host zlib exposes next_in as const Bytef*. Android's source
+          # assigns mutable buffers in these paths. Keep the Android
+          # implementation semantics while making the host compiler accept it.
+          python3 - <<'PYZIP2'
+from pathlib import Path
+
+files = [
+    Path("deps/libziparchive/zip_archive.cc"),
+    Path("deps/libziparchive/zip_archive_stream_entry.cc"),
+    Path("deps/libziparchive/zip_writer.cc"),
+]
+
+for p in files:
+    s = p.read_text()
+
+    # Only add the cast when the known Android source form is present.
+    replacements = [
+        ("next_in = reinterpret_cast<const uint8_t*>(",
+         "next_in = const_cast<Bytef*>(reinterpret_cast<const Bytef*>("),
+    ]
+
+    changed = False
+
+    for old, new in replacements:
+        if old in s and new not in s:
+            s = s.replace(old, new)
+            changed = True
+
+    if changed:
+        p.write_text(s)
+        print("patched:", p)
+
+print("libziparchive host patch pass complete")
+PYZIP2
+
+          echo
+          echo "===== LIBZIPARCHIVE VERIFY ====="
+          grep -n "__ANDROID_HOST__" "$ZIPARCHIVE" || true
+          test -f deps/libziparchive/include/ziparchive/zip_archive.h
+          test -f "$ZIPARCHIVE"
+          test -f "$ZIPARCHIVE_STREAM"
+          test -f deps/libziparchive/zip_cd_entry_map.cc
+          test -f deps/libziparchive/zip_error.cpp
+          test -f "$ZIPWRITER"
+
+          echo "LIBZIPARCHIVE READY"
+
           echo "LIBCHROME HOST PATCH COMPLETE"
 
       # ============================================================
