@@ -211,6 +211,71 @@ set(DELTA_SOURCES
   "${ROOT}/deps/external_avb/libavb/avb_version.c"
 )
 
+
+# ============================================================
+# AI14ROM STAGE-6 FINAL LINK DEPENDENCY COMPLETION
+# ============================================================
+
+# Zucchini core implementation.
+file(GLOB AI14ROM_ZUCCHINI_SOURCES
+  "${ROOT}/deps/zucchini/*.cc"
+)
+list(FILTER AI14ROM_ZUCCHINI_SOURCES
+  EXCLUDE REGEX ".*_unittest\\.cc$"
+)
+
+foreach(src ${AI14ROM_ZUCCHINI_SOURCES})
+  list(APPEND DELTA_SOURCES "${src}")
+endforeach()
+
+# Zucchini uses libchrome logging implementation.
+list(APPEND DELTA_SOURCES
+  "${ROOT}/deps/libchrome/base/logging.cc"
+)
+
+# EROFS runtime implementation required by erofs_filesystem.cc.
+list(APPEND DELTA_SOURCES
+  "${ROOT}/deps/erofs-utils/lib/io.c"
+  "${ROOT}/deps/erofs-utils/lib/data.c"
+  "${ROOT}/deps/erofs-utils/lib/zmap.c"
+)
+
+# AVB complete core implementation.
+file(GLOB AI14ROM_AVB_SOURCES
+  "${ROOT}/deps/external_avb/libavb/*.c"
+)
+
+foreach(src ${AI14ROM_AVB_SOURCES})
+  list(APPEND DELTA_SOURCES "${src}")
+endforeach()
+
+# Android AVB BoringSSL SHA implementation.
+list(APPEND DELTA_SOURCES
+  "${ROOT}/deps/external_avb/libavb/boringssl/sha.c"
+)
+
+# Protobuf static build requires its matching Abseil static libraries.
+file(GLOB AI14ROM_ABSL_LIBS
+  "${ROOT}/deps/protobuf_install/lib/libabsl_*.a"
+)
+
+list(SORT AI14ROM_ABSL_LIBS)
+
+message(STATUS "AI14ROM ZUCCHINI SOURCES:")
+foreach(src ${AI14ROM_ZUCCHINI_SOURCES})
+  message(STATUS "  ${src}")
+endforeach()
+
+message(STATUS "AI14ROM AVB SOURCES:")
+foreach(src ${AI14ROM_AVB_SOURCES})
+  message(STATUS "  ${src}")
+endforeach()
+
+message(STATUS "AI14ROM ABSL LIBRARIES:")
+foreach(lib ${AI14ROM_ABSL_LIBS})
+  message(STATUS "  ${lib}")
+endforeach()
+
 set(GENERATED_PROTO
 )
 
@@ -229,6 +294,7 @@ target_compile_definitions(delta_generator PRIVATE
 target_link_libraries(delta_generator PRIVATE
   ${ROOT}/deps/gflags_install/lib/libgflags.a
   protobuf::libprotobuf
+  ${AI14ROM_ABSL_LIBS}
   OpenSSL::Crypto
   lz4
   zstd
