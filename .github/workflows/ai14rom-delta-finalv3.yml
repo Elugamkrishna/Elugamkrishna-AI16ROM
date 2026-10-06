@@ -372,18 +372,10 @@ jobs:
           EOF
 
           # EROFS host compatibility:
-          # use Linux kernel types from <linux/types.h>.
-          # This prevents duplicate __u64/__le64/__be64 typedefs
-          # against Ubuntu's linux/types.h.
+          # EROFS defs.h uses HAVE_CONFIG_H to load config.h.
+          # HAVE_LINUX_TYPES_H prevents duplicate Linux kernel typedefs.
           CONFIG="deps/erofs-utils/include/config.h"
           grep -q '^#define HAVE_LINUX_TYPES_H 1$' "$CONFIG" ||             printf '\n#define HAVE_LINUX_TYPES_H 1\n' >> "$CONFIG"
-
-          # EROFS host compatibility:
-          # Keep EROFS's native __u*/__le*/__be* typedef fallback.
-          # Ubuntu linux/types.h may already define u64/__u64 aliases;
-          # don't force HAVE_LINUX_TYPES_H here.
-          CONFIG="deps/erofs-utils/include/config.h"
-          sed -i '/^#define HAVE_LINUX_TYPES_H 1$/d' "$CONFIG"
 
           # Ubuntu/glibc exposes makedev() through sys/sysmacros.h.
           NAMEI="deps/erofs-utils/lib/namei.c"
@@ -554,14 +546,15 @@ jobs:
           p = Path("CMakeLists.txt")
           s = p.read_text()
 
-          # Android host definition
+          # Android/host definitions.
+          # HAVE_CONFIG_H makes EROFS defs.h include generated config.h.
           if "__ANDROID_HOST__" not in s:
               marker = "target_compile_definitions(delta_generator PRIVATE"
 
               if marker in s:
                   s = s.replace(
                       marker,
-                      marker + "\n  __ANDROID_HOST__",
+                      marker + "\n  __ANDROID_HOST__\n  HAVE_CONFIG_H",
                       1
                   )
 
