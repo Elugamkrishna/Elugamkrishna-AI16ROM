@@ -853,7 +853,7 @@ jobs:
             -DCMAKE_CXX_COMPILER=clang++ \
             -DCMAKE_CXX_STANDARD=20 \
             -DCMAKE_CXX_FLAGS="-include cstdint -include sys/sysmacros.h -D__ANDROID_HOST__" \
-            -DCMAKE_C_FLAGS="-D__ANDROID_HOST__" \
+            -DCMAKE_C_FLAGS="-include sys/sysmacros.h -D__ANDROID_HOST__" \
             -DCMAKE_PREFIX_PATH="$PROTOBUF_ROOT;$GFLAGS_ROOT" \
             -DProtobuf_ROOT="$PROTOBUF_ROOT" \
             -DProtobuf_DIR="$PROTOBUF_ROOT/lib/cmake/protobuf" \
