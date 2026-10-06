@@ -640,10 +640,12 @@ jobs:
           echo "HOST SOURCE EXCLUSIONS OK"
 
           # Zucchini host compatibility:
-          # Locate zucchini_gen.cc regardless of Android repo subdirectory.
-          test -d deps/zucchini
+          # This step runs from ota_tool/full_build.
+          # Dependencies are under ota_tool/deps.
+          ZUCCHINI_ROOT="../deps/zucchini"
+          test -d "$ZUCCHINI_ROOT"
 
-          ZUCCHINI_GEN="$(find deps/zucchini -type f -name 'zucchini_gen.cc' -print -quit)"
+          ZUCCHINI_GEN="$(find "$ZUCCHINI_ROOT" -type f -name 'zucchini_gen.cc' -print -quit)"
           test -n "$ZUCCHINI_GEN"
           test -f "$ZUCCHINI_GEN"
 
@@ -652,6 +654,7 @@ jobs:
           fi
 
           echo "ZUCCHINI HOST CHECK"
+          echo "ROOT: $ZUCCHINI_ROOT"
           echo "SOURCE: $ZUCCHINI_GEN"
           grep -n 'sys/sysmacros.h' "$ZUCCHINI_GEN"
           echo "ZUCCHINI READY"
