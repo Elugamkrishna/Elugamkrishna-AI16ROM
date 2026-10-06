@@ -371,11 +371,20 @@ jobs:
           #define HAVE_POSIX_FALLOCATE 1
           EOF
 
-          sed -i \
-            -e '/^[[:space:]]*typedef u64[[:space:]]*__u64;$/d' \
-            -e '/^[[:space:]]*typedef u64[[:space:]]*__le64;$/d' \
-            -e '/^[[:space:]]*typedef u64[[:space:]]*__be64;$/d' \
-            deps/erofs-utils/include/erofs/defs.h || true
+          # Keep EROFS __u64/__le64/__be64 typedefs.
+          # Removing them breaks erofs_fs.h on the Ubuntu host.
+
+          # Ubuntu/glibc exposes makedev() through sys/sysmacros.h.
+          NAMEI="deps/erofs-utils/lib/namei.c"
+          test -f "$NAMEI"
+
+          if ! grep -q '^#include <sys/sysmacros.h>' "$NAMEI"; then
+            sed -i '/^#include <sys\/stat.h>/a #include <sys/sysmacros.h>' "$NAMEI"
+          fi
+
+          echo "===== EROFS HOST CHECK ====="
+          grep -n 'sys/sysmacros.h' "$NAMEI" || true
+          grep -n 'typedef u64.*__u64\|typedef u64.*__le64\|typedef u64.*__be64'             deps/erofs-utils/include/erofs/defs.h || true
 
           echo "EROFS READY"
 
