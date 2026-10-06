@@ -87,7 +87,7 @@ set(DELTA_SOURCES
   "${ROOT}/update_engine/payload_consumer/payload_metadata.cc"
   "${ROOT}/update_engine/payload_consumer/payload_verifier.cc"
   "${ROOT}/update_engine/payload_consumer/filesystem_verifier_action.cc"
-  
+
   "${ROOT}/update_engine/payload_consumer/vabc_partition_writer.cc"
   "${ROOT}/update_engine/payload_consumer/install_operation_executor.cc"
   "${ROOT}/update_engine/payload_consumer/partition_writer.cc"
@@ -353,6 +353,11 @@ add_executable(delta_generator
   ${GENERATED_PROTO}
 )
 
+target_include_directories(delta_generator PRIVATE
+  "${ROOT}/deps"
+)
+
+
 target_compile_definitions(delta_generator PRIVATE
   AVB_COMPILATION=1
   HAVE_MEMRCHR=1
@@ -446,7 +451,8 @@ set(AI14ROM_STAGE6_LINK_SOURCES
   "${ROOT}/deps/libchrome/base/memory/weak_ptr.cc"
   "${ROOT}/deps/libbrillo/brillo/errors/error.cc"
   "${ROOT}/deps/libbrillo/brillo/streams/stream_errors.cc"
-  "${ROOT}/deps/libbrillo/brillo/streams/stream_utils.cc")
+  "${ROOT}/deps/libbrillo/brillo/streams/stream_utils.cc"
+  ${ROOT}/deps/modp_b64/modp_b64.cc)
 
 # AI14ROM Stage 6 host build: libchrome must not use Android JNI ContentUri paths.
 target_compile_definitions(delta_generator PRIVATE AI14ROM_HOST_BUILD=1)
