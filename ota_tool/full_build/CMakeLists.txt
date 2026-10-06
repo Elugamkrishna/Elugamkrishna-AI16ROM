@@ -66,7 +66,7 @@ set(DELTA_SOURCES
   "${ROOT}/update_engine/payload_generator/ext2_filesystem.cc"
   "${ROOT}/update_engine/payload_generator/extent_ranges.cc"
   "${ROOT}/update_engine/payload_generator/extent_utils.cc"
-  "${ROOT}/update_engine/payload_generator/fake_filesystem.cc"
+  ""
   "${ROOT}/update_engine/payload_generator/full_update_generator.cc"
   "${ROOT}/update_engine/payload_generator/mapfile_filesystem.cc"
   "${ROOT}/update_engine/payload_generator/merge_sequence_generator.cc"
@@ -87,7 +87,7 @@ set(DELTA_SOURCES
   "${ROOT}/update_engine/payload_consumer/payload_metadata.cc"
   "${ROOT}/update_engine/payload_consumer/payload_verifier.cc"
   "${ROOT}/update_engine/payload_consumer/filesystem_verifier_action.cc"
-  "${ROOT}/update_engine/payload_consumer/verity_writer_stub.cc"
+  
   "${ROOT}/update_engine/payload_consumer/vabc_partition_writer.cc"
   "${ROOT}/update_engine/payload_consumer/install_operation_executor.cc"
   "${ROOT}/update_engine/payload_consumer/partition_writer.cc"
@@ -108,11 +108,25 @@ set(DELTA_SOURCES
   "${ROOT}/update_engine/payload_consumer/verified_source_fd.cc"
 
   # Update Engine common
+  # Stage 6 verified Update Engine common implementations
+  "${ROOT}/update_engine/common/terminator.cc"
+  "${ROOT}/update_engine/common/utils.cc"
+  "${ROOT}/update_engine/common/prefs.cc"
+  "${ROOT}/update_engine/common/hash_calculator.cc"
+  "${ROOT}/update_engine/common/file_fetcher.cc"
+  "${ROOT}/update_engine/common/action_processor.cc"
+
+  # Stage 6 verified generated protobuf implementation
+  "${CMAKE_CURRENT_SOURCE_DIR}/gen/update_engine/update_metadata.pb.cc"
+  "${CMAKE_CURRENT_SOURCE_DIR}/gen/lz4diff/lz4diff.pb.cc"
+
   "${ROOT}/update_engine/common/constants.cc"
   "${ROOT}/update_engine/common/cow_operation_convert.cc"
   "${ROOT}/update_engine/common/hwid_override.cc"
   "${ROOT}/update_engine/common/http_fetcher.cc"
 
+  "${ROOT}/update_engine/common/dynamic_partition_control_stub.cc"
+  "${ROOT}/update_engine/aosp/platform_constants_android.cc"
   # Required top-level Update Engine pieces
   "${ROOT}/update_engine/download_action.cc"
   "${ROOT}/update_engine/payload_consumer/install_plan.cc"
@@ -127,6 +141,7 @@ set(DELTA_SOURCES
   "${ROOT}/deps/libbase/posix_strerror_r.cpp"
 
   # libchrome required implementations
+  "${ROOT}/deps/libchrome/base/synchronization/lock_impl_posix.cc"
   "${ROOT}/deps/libchrome/base/location.cc"
   "${ROOT}/deps/libchrome/base/command_line.cc"
   "${ROOT}/deps/libchrome/base/callback_internal.cc"
@@ -135,6 +150,7 @@ set(DELTA_SOURCES
   "${ROOT}/deps/libchrome/base/files/file_enumerator.cc"
   "${ROOT}/deps/libchrome/base/files/scoped_temp_dir.cc"
   "${ROOT}/deps/libchrome/base/files/file_util.cc"
+  "${ROOT}/deps/libchrome/base/files/file_util_posix.cc"
   "${ROOT}/deps/libchrome/base/strings/string_util.cc"
   "${ROOT}/deps/libchrome/base/strings/string_number_conversions.cc"
   "${ROOT}/deps/libchrome/base/strings/stringprintf.cc"
@@ -224,6 +240,30 @@ list(FILTER AI14ROM_ZUCCHINI_SOURCES
   EXCLUDE REGEX ".*_unittest\\.cc$"
 )
 
+# ============================================================
+# AI14ROM: delta_generator already has generate_delta_main.cc.
+# Zucchini standalone CLI main files must NOT be compiled here.
+# This also avoids Android/AOSP LoggingSettings incompatibility.
+# ============================================================
+list(FILTER AI14ROM_ZUCCHINI_SOURCES
+  EXCLUDE REGEX ".*/zucchini_main(_aosp)?\\.cc$"
+)
+list(FILTER AI14ROM_ZUCCHINI_SOURCES
+  EXCLUDE REGEX ".*/integration_test\\.cc$"
+)
+list(FILTER AI14ROM_ZUCCHINI_SOURCES
+  EXCLUDE REGEX ".*/test_disassembler\\.cc$"
+)
+list(FILTER AI14ROM_ZUCCHINI_SOURCES
+  EXCLUDE REGEX ".*/test_reference_reader\\.cc$"
+)
+list(FILTER AI14ROM_ZUCCHINI_SOURCES
+  EXCLUDE REGEX ".*/test_utils\\.cc$"
+)
+list(FILTER AI14ROM_ZUCCHINI_SOURCES
+  EXCLUDE REGEX ".*/test_.*\\.cc$"
+)
+
 foreach(src ${AI14ROM_ZUCCHINI_SOURCES})
   list(APPEND DELTA_SOURCES "${src}")
 endforeach()
@@ -238,6 +278,8 @@ list(APPEND DELTA_SOURCES
   "${ROOT}/deps/erofs-utils/lib/io.c"
   "${ROOT}/deps/erofs-utils/lib/data.c"
   "${ROOT}/deps/erofs-utils/lib/zmap.c"
+  "${ROOT}/deps/erofs-utils/lib/dir.c"
+  "${ROOT}/deps/erofs-utils/lib/super.c"
 )
 
 # AVB complete core implementation.
@@ -279,6 +321,33 @@ endforeach()
 set(GENERATED_PROTO
 )
 
+
+# AI14ROM Stage 6 — libziparchive
+set(AI14ROM_ZIPARCHIVE_SOURCES
+  "${ROOT}/deps/libziparchive/zip_archive.cc"
+  "${ROOT}/deps/libziparchive/zip_archive_stream_entry.cc"
+  "${ROOT}/deps/libziparchive/zip_cd_entry_map.cc"
+  "${ROOT}/deps/libziparchive/zip_error.cpp"
+  "${ROOT}/deps/libziparchive/zip_writer.cc"
+)
+
+set(AI14ROM_FEC_VERITY_SOURCES
+  "${ROOT}/deps/system_extras/libfec/fec_open.cpp"
+  "${ROOT}/deps/system_extras/verity/hash_tree_builder.cpp"
+  "${ROOT}/update_engine/payload_consumer/verity_writer_android.cc"
+  "${ROOT}/deps/libbrillo/brillo/data_encoding.cc"
+  "${ROOT}/update_engine/common/subprocess.cc"
+  "${ROOT}/deps/lzma/C/7zCrc.c"
+  "${ROOT}/deps/lzma/C/Lzma2Enc.c"
+  "${ROOT}/deps/lzma/C/XzEnc.c"
+)
+
+include_directories(
+  "${ROOT}/deps/libziparchive/include"
+  "${ROOT}/deps/libziparchive"
+  "${ROOT}/deps/libziparchive/incfs_support/include"
+)
+
 add_executable(delta_generator
   ${DELTA_SOURCES}
   ${GENERATED_PROTO}
@@ -291,6 +360,90 @@ target_compile_definitions(delta_generator PRIVATE
   __ANDROID_UNAVAILABLE_SYMBOLS_ARE_WEAK__
 )
 
+target_sources(delta_generator PRIVATE ${AI14ROM_FEC_VERITY_SOURCES})
+target_sources(delta_generator PRIVATE ${AI14ROM_ZIPARCHIVE_SOURCES})
+
+
+add_compile_definitions(EVP_PKEY_size=EVP_PKEY_get_size EVP_PKEY_id=EVP_PKEY_get_id)
+
+set(AI14ROM_STAGE6_LINK_SOURCES
+  "${ROOT}/deps/libchrome/base/task_runner.cc"
+  "${ROOT}/deps/libchrome/base/process/process_posix.cc"
+  "${ROOT}/deps/libchrome/base/sys_info_posix.cc"
+  "${ROOT}/deps/libchrome/base/metrics/bucket_ranges.cc"
+  "${ROOT}/deps/libchrome/base/metrics/dummy_histogram.cc"
+  "${ROOT}/deps/libchrome/base/metrics/histogram_functions.cc"
+  "${ROOT}/deps/libchrome/base/metrics/histogram_samples.cc"
+  "${ROOT}/deps/libchrome/base/metrics/metrics_hashes.cc"
+  "${ROOT}/deps/libchrome/base/metrics/persistent_histogram_allocator.cc"
+  "${ROOT}/deps/libchrome/base/metrics/persistent_histogram_storage.cc"
+  "${ROOT}/deps/libchrome/base/metrics/persistent_sample_map.cc"
+  "${ROOT}/deps/libchrome/base/metrics/sample_map.cc"
+  "${ROOT}/deps/libchrome/base/metrics/sample_vector.cc"
+  "${ROOT}/deps/libchrome/base/metrics/sparse_histogram.cc"
+  "${ROOT}/deps/libchrome/base/metrics/field_trial.cc"
+  "${ROOT}/deps/libchrome/base/files/scoped_file.cc"
+  "${ROOT}/deps/libchrome/base/strings/string_util_constants.cc"
+  "${ROOT}/deps/libchrome/base/value_iterators.cc"
+  "${ROOT}/deps/libchrome/base/json/string_escape.cc"
+  "${ROOT}/deps/libchrome/base/synchronization/waitable_event_posix.cc"
+  "${ROOT}/deps/libchrome/base/debug/debugger_posix.cc"
+  "${ROOT}/deps/libchrome/base/process/process_handle_posix.cc"
+  "${ROOT}/deps/libchrome/base/memory/shared_memory_posix.cc"
+  "${ROOT}/deps/libchrome/base/memory/ref_counted.cc"
+  "${ROOT}/deps/libchrome/base/rand_util_posix.cc"
+  "${ROOT}/deps/libchrome/base/files/file_path_constants.cc"
+  "${ROOT}/deps/libchrome/base/lazy_instance_helpers.cc"
+  "${ROOT}/deps/libchrome/base/strings/sys_string_conversions_posix.cc"
+  "${ROOT}/deps/libchrome/base/third_party/icu/icu_utf.cc"
+  "${ROOT}/update_engine/payload_consumer/certificate_parser_android.cc"
+  "${ROOT}/deps/libbrillo/brillo/secure_blob.cc"
+  "${ROOT}/deps/libbase/properties.cpp"
+  "${ROOT}/update_engine/common/error_code_utils.cc"
+  "${ROOT}/deps/libchrome/base/files/file.cc"
+  "${ROOT}/deps/libchrome/base/files/file_posix.cc"
+  "${ROOT}/deps/libchrome/base/files/memory_mapped_file.cc"
+  "${ROOT}/deps/libchrome/base/files/memory_mapped_file_posix.cc"
+  "${ROOT}/deps/bsdiff/bspatch.cc"
+  "${ROOT}/deps/puffin/src/puffpatch.cc"
+  "${ROOT}/deps/puffin/src/puffin_stream.cc"
+  "${ROOT}/deps/puffin/src/extent_stream.cc"
+  "${ROOT}/deps/puffin/src/memory_stream.cc"
+  "${ROOT}/deps/puffin/src/file_stream.cc"
+  "${ROOT}/deps/puffin/src/puff_reader.cc"
+  "${ROOT}/deps/puffin/src/puff_writer.cc"
+  "${ROOT}/deps/puffin/src/puffer.cc"
+  "${ROOT}/deps/puffin/src/huffer.cc"
+  "${ROOT}/deps/puffin/src/huffman_table.cc"
+  "${ROOT}/deps/puffin/src/bit_reader.cc"
+  "${ROOT}/deps/puffin/src/bit_writer.cc"
+  "${ROOT}/deps/system_core/fs_mgr/libsnapshot/libsnapshot_cow/cow_writer.cpp"
+
+  # ===== AI14ROM Stage 6.5 — verified linker owners =====
+  "${ROOT}/deps/system_extras/libfec/fec_read.cpp"
+
+  "${ROOT}/deps/libchrome/base/files/file_descriptor_watcher_posix.cc"
+  "${ROOT}/deps/libchrome/base/files/file_enumerator_posix.cc"
+  "${ROOT}/deps/libchrome/base/metrics/statistics_recorder.cc"
+
+  "${ROOT}/deps/libbase/mapped_file.cpp"
+  "${ROOT}/deps/libbase/stringprintf.cpp"
+  "${ROOT}/deps/libbase/threads.cpp"
+
+  "${ROOT}/update_engine/lz4diff/lz4diff_compress.cc"
+  "${ROOT}/update_engine/common/multi_range_http_fetcher.cc"
+
+  "${ROOT}/deps/bsdiff/patch_writer.cc"
+
+  # liblog implementation required by libbase/logging.cpp
+  "${ROOT}/deps/system_logging/liblog/logger_write.cpp"
+)
+
+# AI14ROM Stage 6 host build: libchrome must not use Android JNI ContentUri paths.
+target_compile_definitions(delta_generator PRIVATE AI14ROM_HOST_BUILD=1)
+
+target_sources(delta_generator PRIVATE ${AI14ROM_STAGE6_LINK_SOURCES})
+
 target_link_libraries(delta_generator PRIVATE
   ${ROOT}/deps/gflags_install/lib/libgflags.a
   protobuf::libprotobuf
@@ -301,6 +454,7 @@ target_link_libraries(delta_generator PRIVATE
   bz2
   z
   lzma
+  ext2fs
   pthread
 )
 

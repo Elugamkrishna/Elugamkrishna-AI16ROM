@@ -25,3 +25,19 @@ ota_tool/deps/lzma/
 ota_tool/deps/system_core/
 ota_tool/deps/system_extras/
 ota_tool/deps/external_avb/
+
+# AI14ROM local build artifacts
+ota_tool/build_stage6/
+ota_tool/full_build/build_stage6/
+ota_tool/full_build/CMakeCache.txt
+ota_tool/full_build/CMakeFiles/
+ota_tool/full_build/Makefile
+ota_tool/full_build/cmake_install.cmake
+ota_tool/full_build/CMakeLists.txt.stage6*.bak
+ota_tool/erofs_backup/
+ota_tool/stage6*.log
+ota_tool/ziparchive_check/
+ota_tool/deps
+
+# AI14ROM audit build artifacts
+ota_tool/full_build/audit_cmake_build/
