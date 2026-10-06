@@ -378,6 +378,13 @@ jobs:
           CONFIG="deps/erofs-utils/include/config.h"
           grep -q '^#define HAVE_LINUX_TYPES_H 1$' "$CONFIG" ||             printf '\n#define HAVE_LINUX_TYPES_H 1\n' >> "$CONFIG"
 
+          # EROFS host compatibility:
+          # Keep EROFS's native __u*/__le*/__be* typedef fallback.
+          # Ubuntu linux/types.h may already define u64/__u64 aliases;
+          # don't force HAVE_LINUX_TYPES_H here.
+          CONFIG="deps/erofs-utils/include/config.h"
+          sed -i '/^#define HAVE_LINUX_TYPES_H 1$/d' "$CONFIG"
+
           # Ubuntu/glibc exposes makedev() through sys/sysmacros.h.
           NAMEI="deps/erofs-utils/lib/namei.c"
           test -f "$NAMEI"
