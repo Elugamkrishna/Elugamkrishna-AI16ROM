@@ -261,4 +261,5 @@ include_directories(
   "${CMAKE_SOURCE_DIR}/../deps/erofs-utils/include"
 ) # erofs_config_persistent
 
-include_directories("${CMAKE_SOURCE_DIR}/../deps/external_avb/libavb/boringssl") # AI14ROM_AVB_CRYPTO_HEADER_DIR
+include_directories("${CMAKE_SOURCE_DIR}/../deps/external_avb/libavb/boringssl")
+include_directories("${CMAKE_SOURCE_DIR}/../deps/external_boringssl/src/include") # AI14ROM_AVB_CRYPTO_HEADER_DIR

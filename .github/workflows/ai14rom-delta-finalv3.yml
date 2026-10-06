@@ -162,6 +162,10 @@ jobs:
             android14-release \
             https://android.googlesource.com/platform/external/avb
 
+          clone_branch external_boringssl \
+            android14-release \
+            https://android.googlesource.com/platform/external/boringssl
+
           clone_main gflags \
             https://android.googlesource.com/platform/external/gflags
 
@@ -216,6 +220,9 @@ jobs:
 
           test -f deps/system_logging/liblog/include/android/log.h
           echo "OK: deps/system_logging/liblog/include/android/log.h"
+
+          test -f deps/external_boringssl/src/include/openssl/is_boringssl.h
+          echo "OK: deps/external_boringssl/src/include/openssl/is_boringssl.h"
 
           echo
           echo "========================================"
