@@ -545,10 +545,23 @@ jobs:
                       1
                   )
 
+          # Generated protobuf include directory.
+          # Puffin sources include: "puffin/src/puffin.pb.h"
+          include_marker = '  "${GEN}"\n'
+          include_line = '  "${CMAKE_CURRENT_BINARY_DIR}/gen"\n'
+
+          if include_line not in s and include_marker in s:
+              s = s.replace(
+                  include_marker,
+                  include_marker + include_line,
+                  1
+              )
+
           # Generated protobuf sources
           generated = [
               '  "${CMAKE_CURRENT_BINARY_DIR}/gen/update_engine/update_metadata.pb.cc"\n',
               '  "${CMAKE_CURRENT_BINARY_DIR}/gen/lz4diff/lz4diff.pb.cc"\n',
+              '  "${CMAKE_CURRENT_BINARY_DIR}/gen/puffin/src/puffin.pb.cc"\n',
           ]
 
           if "update_metadata.pb.cc" not in s:
