@@ -640,7 +640,9 @@ jobs:
           echo "HOST SOURCE EXCLUSIONS OK"
 
           # Zucchini host compatibility:
-          # Locate zucchini_gen.cc regardless of its Android repo subdirectory.
+          # Locate zucchini_gen.cc regardless of Android repo subdirectory.
+          test -d deps/zucchini
+
           ZUCCHINI_GEN="$(find deps/zucchini -type f -name 'zucchini_gen.cc' -print -quit)"
           test -n "$ZUCCHINI_GEN"
           test -f "$ZUCCHINI_GEN"
