@@ -639,6 +639,20 @@ jobs:
 
           echo "HOST SOURCE EXCLUSIONS OK"
 
+          # Zucchini host compatibility:
+          # Ubuntu/glibc exposes makedev() through sys/sysmacros.h.
+          ZUCCHINI_GEN="deps/zucchini/zucchini_gen.cc"
+          test -f "$ZUCCHINI_GEN"
+
+          if ! grep -q '^#include <sys/sysmacros.h>' "$ZUCCHINI_GEN"; then
+            sed -i '1i#include <sys/sysmacros.h>' "$ZUCCHINI_GEN"
+          fi
+
+          echo "ZUCCHINI HOST CHECK"
+          grep -n 'sys/sysmacros.h' "$ZUCCHINI_GEN"
+          echo "ZUCCHINI READY"
+
+
       # ============================================================
       # 10 - LIBBRILLO HOST SOURCES
       # ============================================================
