@@ -697,7 +697,7 @@ jobs:
           section = s[a:b]
 
           for src in linker_sources:
-              line = f'  "${ROOT}/{src}"'
+              line = '  "${ROOT}/' + src + '"' 
               if line not in section:
                   section += "\n" + line
 
