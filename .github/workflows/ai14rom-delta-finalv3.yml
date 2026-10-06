@@ -674,6 +674,34 @@ jobs:
 
           s = "".join(lines)
 
+
+          # AI14ROM_STAGE6_WORKFLOW_LINKER_CLOSURE
+          linker_sources = [
+              "deps/libchrome/base/json/json_string_value_serializer.cc",
+              "deps/libchrome/base/files/important_file_writer.cc",
+              "deps/libchrome/base/process/process_handle.cc",
+              "deps/libchrome/base/process/process_metrics_posix.cc",
+              "deps/libchrome/base/file_descriptor_shuffle.cc",
+              "deps/libchrome/base/memory/weak_ptr.cc",
+              "deps/libbrillo/brillo/errors/error.cc",
+              "deps/libbrillo/brillo/streams/stream_errors.cc",
+              "deps/libbrillo/brillo/streams/stream_utils.cc",
+          ]
+
+          cmake_marker = "set(AI14ROM_STAGE6_LINK_SOURCES"
+          if cmake_marker not in s:
+              raise SystemExit("AI14ROM_STAGE6_LINK_SOURCES missing")
+
+          a = s.index(cmake_marker)
+          b = s.index(")", a)
+          section = s[a:b]
+
+          for src in linker_sources:
+              line = f'  "${{ROOT}}/{src}"'
+              if line not in section:
+                  section += "\n" + line
+
+          s = s[:a] + section + s[b:]
           p.write_text(s)
 
           print("ANDROID HOST CMAKE PATCH COMPLETE")

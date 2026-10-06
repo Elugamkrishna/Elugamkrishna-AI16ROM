@@ -437,7 +437,16 @@ set(AI14ROM_STAGE6_LINK_SOURCES
 
   # liblog implementation required by libbase/logging.cpp
   "${ROOT}/deps/system_logging/liblog/logger_write.cpp"
-)
+
+  "${ROOT}/deps/libchrome/base/json/json_string_value_serializer.cc"
+  "${ROOT}/deps/libchrome/base/files/important_file_writer.cc"
+  "${ROOT}/deps/libchrome/base/process/process_handle.cc"
+  "${ROOT}/deps/libchrome/base/process/process_metrics_posix.cc"
+  "${ROOT}/deps/libchrome/base/file_descriptor_shuffle.cc"
+  "${ROOT}/deps/libchrome/base/memory/weak_ptr.cc"
+  "${ROOT}/deps/libbrillo/brillo/errors/error.cc"
+  "${ROOT}/deps/libbrillo/brillo/streams/stream_errors.cc"
+  "${ROOT}/deps/libbrillo/brillo/streams/stream_utils.cc")
 
 # AI14ROM Stage 6 host build: libchrome must not use Android JNI ContentUri paths.
 target_compile_definitions(delta_generator PRIVATE AI14ROM_HOST_BUILD=1)
