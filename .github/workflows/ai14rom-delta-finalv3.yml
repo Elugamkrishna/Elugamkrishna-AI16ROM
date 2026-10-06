@@ -371,8 +371,12 @@ jobs:
           #define HAVE_POSIX_FALLOCATE 1
           EOF
 
-          # Keep EROFS __u64/__le64/__be64 typedefs.
-          # Removing them breaks erofs_fs.h on the Ubuntu host.
+          # EROFS host compatibility:
+          # use Linux kernel types from <linux/types.h>.
+          # This prevents duplicate __u64/__le64/__be64 typedefs
+          # against Ubuntu's linux/types.h.
+          CONFIG="deps/erofs-utils/include/config.h"
+          grep -q '^#define HAVE_LINUX_TYPES_H 1$' "$CONFIG" ||             printf '\n#define HAVE_LINUX_TYPES_H 1\n' >> "$CONFIG"
 
           # Ubuntu/glibc exposes makedev() through sys/sysmacros.h.
           NAMEI="deps/erofs-utils/lib/namei.c"
