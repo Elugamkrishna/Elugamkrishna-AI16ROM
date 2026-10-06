@@ -681,7 +681,7 @@ jobs:
               "deps/libchrome/base/files/important_file_writer.cc",
               "deps/libchrome/base/process/process_handle.cc",
               "deps/libchrome/base/process/process_metrics_posix.cc",
-              "deps/libchrome/base/file_descriptor_shuffle.cc",
+              "deps/libchrome/base/posix/file_descriptor_shuffle.cc",
               "deps/libchrome/base/memory/weak_ptr.cc",
               "deps/libbrillo/brillo/errors/error.cc",
               "deps/libbrillo/brillo/streams/stream_errors.cc",
