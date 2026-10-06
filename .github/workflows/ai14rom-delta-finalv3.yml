@@ -579,6 +579,16 @@ jobs:
           test -f "$ZIPWRITER"
 
           echo "LIBZIPARCHIVE READY"
+
+          # Disable remaining Android Content-URI paths for host build.
+          # The host delta_generator does not use Android ContentResolver/JNI.
+          python3 -c 'from pathlib import Path; p=Path("deps/libchrome/base/files/file_util_posix.cc"); s=p.read_text(); s=s.replace("#if defined(OS_ANDROID)\n  if (file_path.IsContentUri())", "#if defined(OS_ANDROID) && !defined(AI14ROM_HOST_BUILD)\n  if (file_path.IsContentUri())"); s=s.replace("#if defined(OS_ANDROID)\n  if (from_path.IsContentUri())", "#if defined(OS_ANDROID) && !defined(AI14ROM_HOST_BUILD)\n  if (from_path.IsContentUri())"); p.write_text(s)'
+
+          echo "CONTENT URI HOST GUARDS:"
+          grep -n -B1 -A2 "ContentUriExists\|OpenContentUriForRead" \
+            deps/libchrome/base/files/file_util_posix.cc || true
+
+
           echo "LIBCHROME HOST PATCH COMPLETE"
 
       # ============================================================
