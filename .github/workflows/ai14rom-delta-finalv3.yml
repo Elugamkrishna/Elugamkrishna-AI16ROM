@@ -560,68 +560,17 @@ jobs:
           test -f "$ZIPWRITER"
 
           # Android FDSAN APIs are unavailable on the Ubuntu host.
-          # Keep them enabled for real Android builds, but exclude them
-          # from this host delta_generator build.
-          python3 - <<'PYZIP'
-from pathlib import Path
+          # Keep them enabled for Android, disable them for host build.
+          sed -i 's/#if defined(__BIONIC__)/#if defined(__BIONIC__) \&\& !defined(__ANDROID_HOST__)/g' "$ZIPARCHIVE"
 
-p = Path("deps/libziparchive/zip_archive.cc")
-s = p.read_text()
-
-old = "#if defined(__BIONIC__)"
-new = "#if defined(__BIONIC__) && !defined(__ANDROID_HOST__)"
-
-count = s.count(old)
-
-if count:
-    s = s.replace(old, new)
-    p.write_text(s)
-    print(f"zip_archive.cc: patched {count} BIONIC guards")
-else:
-    if "__ANDROID_HOST__" not in s:
-        raise SystemExit("ERROR: expected BIONIC guards not found in zip_archive.cc")
-    print("zip_archive.cc: BIONIC guards already patched")
-
-PYZIP
-
-          # Host zlib exposes next_in as const Bytef*. Android's source
-          # assigns mutable buffers in these paths. Keep the Android
-          # implementation semantics while making the host compiler accept it.
-          python3 - <<'PYZIP2'
-from pathlib import Path
-
-files = [
-    Path("deps/libziparchive/zip_archive.cc"),
-    Path("deps/libziparchive/zip_archive_stream_entry.cc"),
-    Path("deps/libziparchive/zip_writer.cc"),
-]
-
-for p in files:
-    s = p.read_text()
-
-    # Only add the cast when the known Android source form is present.
-    replacements = [
-        ("next_in = reinterpret_cast<const uint8_t*>(",
-         "next_in = const_cast<Bytef*>(reinterpret_cast<const Bytef*>("),
-    ]
-
-    changed = False
-
-    for old, new in replacements:
-        if old in s and new not in s:
-            s = s.replace(old, new)
-            changed = True
-
-    if changed:
-        p.write_text(s)
-        print("patched:", p)
-
-print("libziparchive host patch pass complete")
-PYZIP2
+          # Host zlib compatibility.
+          sed -i 's/next_in = reinterpret_cast<const uint8_t\*>(/next_in = const_cast<Bytef*>(reinterpret_cast<const Bytef*>(/g' \
+            "$ZIPARCHIVE" "$ZIPARCHIVE_STREAM" "$ZIPWRITER"
 
           echo
           echo "===== LIBZIPARCHIVE VERIFY ====="
           grep -n "__ANDROID_HOST__" "$ZIPARCHIVE" || true
+
           test -f deps/libziparchive/include/ziparchive/zip_archive.h
           test -f "$ZIPARCHIVE"
           test -f "$ZIPARCHIVE_STREAM"
@@ -630,7 +579,6 @@ PYZIP2
           test -f "$ZIPWRITER"
 
           echo "LIBZIPARCHIVE READY"
-
           echo "LIBCHROME HOST PATCH COMPLETE"
 
       # ============================================================
