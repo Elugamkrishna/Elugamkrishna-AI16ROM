@@ -442,7 +442,7 @@ set(AI14ROM_STAGE6_LINK_SOURCES
   "${ROOT}/deps/libchrome/base/files/important_file_writer.cc"
   "${ROOT}/deps/libchrome/base/process/process_handle.cc"
   "${ROOT}/deps/libchrome/base/process/process_metrics_posix.cc"
-  "${ROOT}/deps/libchrome/base/file_descriptor_shuffle.cc"
+  "${ROOT}/deps/libchrome/base/posix/file_descriptor_shuffle.cc"
   "${ROOT}/deps/libchrome/base/memory/weak_ptr.cc"
   "${ROOT}/deps/libbrillo/brillo/errors/error.cc"
   "${ROOT}/deps/libbrillo/brillo/streams/stream_errors.cc"
