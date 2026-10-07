@@ -470,8 +470,17 @@ target_sources(delta_generator PRIVATE ${AI14ROM_STAGE6_LINK_SOURCES})
 find_library(BROTLI_ENC_LIB brotlienc REQUIRED)
 find_library(BROTLI_DEC_LIB brotlidec REQUIRED)
 
-# libfec Reed-Solomon implementation.
-find_library(FEC_RS_LIB fec_rs)
+# Android external/fec Reed-Solomon implementation.
+# Android libfec_rs is defined from these three source files.
+# Build them directly for the Ubuntu host instead of searching for
+# a system libfec_rs library, which is not provided by the runner.
+set(AI14ROM_FEC_RS_SOURCES
+  "${ROOT}/deps/external_fec/encode_rs_char.c"
+  "${ROOT}/deps/external_fec/decode_rs_char.c"
+  "${ROOT}/deps/external_fec/init_rs_char.c"
+)
+
+target_sources(delta_generator PRIVATE ${AI14ROM_FEC_RS_SOURCES})
 
 # Protobuf + Abseil + generated utf8_range are mutually dependent
 # static archives, therefore link them as one archive group.
@@ -495,8 +504,6 @@ target_link_libraries(delta_generator PRIVATE
   z
   lzma
   ext2fs
-
-  ${FEC_RS_LIB}
 
   pthread
 )
