@@ -588,6 +588,16 @@ jobs:
           )
 
           p.write_text(s)
+
+          stream = Path("deps/libziparchive/zip_archive_stream_entry.cc")
+          ss = stream.read_text()
+
+          ss = ss.replace(
+              "z_stream.next_in = res;",
+              "z_stream.next_in = const_cast<Bytef*>(reinterpret_cast<const Bytef*>(res));"
+          )
+
+          stream.write_text(ss)
           PY2
 
           echo
