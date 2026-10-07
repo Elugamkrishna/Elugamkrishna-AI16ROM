@@ -582,6 +582,11 @@ jobs:
               "zstream.next_in = const_cast<Bytef*>(reinterpret_cast<const Bytef*>(buf));"
           )
 
+          s = s.replace(
+              "z_stream_.next_in = res;",
+              "z_stream_.next_in = const_cast<Bytef*>(reinterpret_cast<const Bytef*>(res));"
+          )
+
           p.write_text(s)
           PY2
 
