@@ -462,10 +462,32 @@ target_compile_definitions(delta_generator PRIVATE AI14ROM_HOST_BUILD=1)
 
 target_sources(delta_generator PRIVATE ${AI14ROM_STAGE6_LINK_SOURCES})
 
+# ============================================================
+# AI14ROM Stage 6.6 — COMPLETE HOST LINK DEPENDENCY CLOSURE
+# ============================================================
+
+# Host Brotli libraries required by Android bsdiff/puffin.
+find_library(BROTLI_ENC_LIB brotlienc REQUIRED)
+find_library(BROTLI_DEC_LIB brotlidec REQUIRED)
+
+# libfec Reed-Solomon implementation.
+find_library(FEC_RS_LIB fec_rs)
+
+# Protobuf + Abseil + generated utf8_range are mutually dependent
+# static archives, therefore link them as one archive group.
+target_link_options(delta_generator PRIVATE
+  "-Wl,--start-group"
+)
+
 target_link_libraries(delta_generator PRIVATE
   ${ROOT}/deps/gflags_install/lib/libgflags.a
+
   protobuf::libprotobuf
   ${AI14ROM_ABSL_LIBS}
+
+  ${BROTLI_ENC_LIB}
+  ${BROTLI_DEC_LIB}
+
   OpenSSL::Crypto
   lz4
   zstd
@@ -473,7 +495,14 @@ target_link_libraries(delta_generator PRIVATE
   z
   lzma
   ext2fs
+
+  ${FEC_RS_LIB}
+
   pthread
+)
+
+target_link_options(delta_generator PRIVATE
+  "-Wl,--end-group"
 )
 
 message(STATUS "========================================")
