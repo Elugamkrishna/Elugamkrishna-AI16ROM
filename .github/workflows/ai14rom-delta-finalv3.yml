@@ -885,16 +885,16 @@ jobs:
 
 
             # Android external/modp_b64
-            if [ ! -f ota_tool/deps/modp_b64/modp_b64/modp_b64.h ] || \
-               [ ! -f ota_tool/deps/modp_b64/modp_b64.cc ]; then
-              rm -rf ota_tool/deps/modp_b64
+            if [ ! -f ../deps/modp_b64/modp_b64/modp_b64.h ] || \
+               [ ! -f ../deps/modp_b64/modp_b64.cc ]; then
+              rm -rf ../deps/modp_b64
               git clone --depth 1 \
                 https://android.googlesource.com/platform/external/modp_b64 \
-                ota_tool/deps/modp_b64
+                ../deps/modp_b64
             fi
 
-            test -f ota_tool/deps/modp_b64/modp_b64/modp_b64.h
-            test -f ota_tool/deps/modp_b64/modp_b64.cc
+            test -f ../deps/modp_b64/modp_b64/modp_b64.h
+            test -f ../deps/modp_b64/modp_b64.cc
             echo "MODP_B64: OK"
 
       - name: Configure delta_generator

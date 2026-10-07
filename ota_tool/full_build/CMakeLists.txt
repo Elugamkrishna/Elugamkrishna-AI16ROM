@@ -12,7 +12,7 @@ set(ROOT "${CMAKE_CURRENT_SOURCE_DIR}/..")
 set(GEN "${CMAKE_CURRENT_SOURCE_DIR}/gen")
 
 include_directories(
-include_directories("../deps/fec")
+  "${ROOT}/deps/fec"
   "${ROOT}"
   "${ROOT}/update_engine"
   "${GEN}"
@@ -359,6 +359,8 @@ target_include_directories(delta_generator PRIVATE
 
 
 target_compile_definitions(delta_generator PRIVATE
+  __ANDROID_HOST__
+  HAVE_CONFIG_H
   AVB_COMPILATION=1
   HAVE_MEMRCHR=1
   PACKAGE_VERSION="1.8"
