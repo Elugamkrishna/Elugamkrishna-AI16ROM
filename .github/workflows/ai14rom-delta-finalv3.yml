@@ -563,13 +563,33 @@ jobs:
           # Keep them enabled for Android, disable them for host build.
           sed -i 's/#if defined(__BIONIC__)/#if defined(__BIONIC__) \&\& !defined(__ANDROID_HOST__)/g' "$ZIPARCHIVE"
 
-          # Host zlib compatibility.
-          sed -i 's/next_in = reinterpret_cast<const uint8_t\*>(/next_in = const_cast<Bytef*>(reinterpret_cast<const Bytef*>(/g' \
-            "$ZIPARCHIVE" "$ZIPARCHIVE_STREAM" "$ZIPWRITER"
+          # Host zlib/libziparchive compatibility.
+          # Android 14 libziparchive exposes const uint8_t* while zlib
+          # expects Bytef*. Also fix the host narrowing conversion.
+          python3 - <<'PY2'
+from pathlib import Path
+
+p = Path("deps/libziparchive/zip_archive.cc")
+s = p.read_text()
+
+s = s.replace(
+    "return {buf.first, ssize_t(buf.second)};",
+    "return {buf.first, buf.second};"
+)
+
+s = s.replace(
+    "zstream.next_in = buf;",
+    "zstream.next_in = const_cast<Bytef*>(reinterpret_cast<const Bytef*>(buf));"
+)
+
+p.write_text(s)
+PY2
 
           echo
           echo "===== LIBZIPARCHIVE VERIFY ====="
           grep -n "__ANDROID_HOST__" "$ZIPARCHIVE" || true
+          grep -n "return {buf.first, buf.second};" "$ZIPARCHIVE"
+          grep -n "zstream.next_in = const_cast<Bytef" "$ZIPARCHIVE"
 
           test -f deps/libziparchive/include/ziparchive/zip_archive.h
           test -f "$ZIPARCHIVE"
