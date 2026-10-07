@@ -567,23 +567,23 @@ jobs:
           # Android 14 libziparchive exposes const uint8_t* while zlib
           # expects Bytef*. Also fix the host narrowing conversion.
           python3 - <<'PY2'
-from pathlib import Path
+          from pathlib import Path
 
-p = Path("deps/libziparchive/zip_archive.cc")
-s = p.read_text()
+          p = Path("deps/libziparchive/zip_archive.cc")
+          s = p.read_text()
 
-s = s.replace(
-    "return {buf.first, ssize_t(buf.second)};",
-    "return {buf.first, buf.second};"
-)
+          s = s.replace(
+              "return {buf.first, ssize_t(buf.second)};",
+              "return {buf.first, buf.second};"
+          )
 
-s = s.replace(
-    "zstream.next_in = buf;",
-    "zstream.next_in = const_cast<Bytef*>(reinterpret_cast<const Bytef*>(buf));"
-)
+          s = s.replace(
+              "zstream.next_in = buf;",
+              "zstream.next_in = const_cast<Bytef*>(reinterpret_cast<const Bytef*>(buf));"
+          )
 
-p.write_text(s)
-PY2
+          p.write_text(s)
+          PY2
 
           echo
           echo "===== LIBZIPARCHIVE VERIFY ====="
