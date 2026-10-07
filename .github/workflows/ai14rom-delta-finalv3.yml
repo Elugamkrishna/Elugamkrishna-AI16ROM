@@ -620,40 +620,46 @@ jobs:
               if "next_in" in line:
                   print(f"{i}: {line}")
           # --------------------------------------------------------
-          # FIX: libchrome host zlib constness
+          # FIX: libziparchive zip_writer host zlib constness
           # --------------------------------------------------------
 
-          TASK_RUNNER = Path("deps/libchrome/base/task_runner.cc")
-          tr = TASK_RUNNER.read_text()
+          ZIPWRITER = Path("deps/libziparchive/zip_writer.cc")
+          zw = ZIPWRITER.read_text()
 
           import re
 
-          task_pattern = r"z_stream_->next_in\s*=\s*reinterpret_cast<const uint8_t\*>\(data\)\s*;"
-          task_replacement = "z_stream_->next_in = const_cast<Bytef*>(reinterpret_cast<const Bytef*>(data));"
+          writer_pattern = r"z_stream_->next_in\s*=\s*reinterpret_cast<const uint8_t\*>\(data\)\s*;"
+          writer_replacement = "z_stream_->next_in = const_cast<Bytef*>(reinterpret_cast<const Bytef*>(data));"
 
-          tr2, task_count = re.subn(
-              task_pattern,
-              task_replacement,
-              tr,
+          zw2, writer_count = re.subn(
+              writer_pattern,
+              writer_replacement,
+              zw,
               count=1
           )
 
-          if task_count != 1:
-              print("===== TASK_RUNNER SOURCE DEBUG =====")
-              for i, line in enumerate(tr.splitlines(), 1):
+          if writer_count != 1:
+              print("===== ZIP_WRITER SOURCE DEBUG =====")
+              for i, line in enumerate(zw.splitlines(), 1):
                   if "next_in" in line:
                       print(f"{i}: {line}")
-              raise SystemExit("ERROR: task_runner z_stream_->next_in assignment NOT FOUND")
+              raise SystemExit(
+                  "ERROR: zip_writer z_stream_->next_in assignment NOT FOUND"
+              )
 
-          TASK_RUNNER.write_text(tr2)
+          ZIPWRITER.write_text(zw2)
 
-          if task_replacement not in TASK_RUNNER.read_text():
-              raise SystemExit("ERROR: task_runner host zlib patch FAILED")
+          verify_writer = ZIPWRITER.read_text()
 
-          print("TASK_RUNNER PATCH OK")
+          if writer_replacement not in verify_writer:
+              raise SystemExit(
+                  "ERROR: zip_writer host zlib patch FAILED"
+              )
 
-          print("===== TASK_RUNNER VERIFY =====")
-          for i, line in enumerate(TASK_RUNNER.read_text().splitlines(), 1):
+          print("ZIP_WRITER PATCH OK")
+
+          print("===== ZIP_WRITER VERIFY =====")
+          for i, line in enumerate(verify_writer.splitlines(), 1):
               if "next_in" in line:
                   print(f"{i}: {line}")
 
