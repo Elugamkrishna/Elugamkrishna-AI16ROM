@@ -384,7 +384,6 @@ set(AI14ROM_STAGE6_LINK_SOURCES
   "${ROOT}/deps/libchrome/base/feature_list.cc"
   "${ROOT}/deps/libchrome/base/metrics/field_trial_params.cc"
   "${ROOT}/deps/libchrome/base/build_time.cc"
-  "${ROOT}/deps/libchrome/base/memory/shared_memory.cc"
   "${ROOT}/deps/libchrome/base/unguessable_token.cc"
   "${ROOT}/deps/libchrome/base/at_exit.cc"
   "${ROOT}/deps/libchrome/base/hash/md5.cc"
