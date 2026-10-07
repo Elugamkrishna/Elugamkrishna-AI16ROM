@@ -594,26 +594,30 @@ jobs:
 
           import re
 
-          pattern = r"(?m)^(\s*)z_stream\.next_in\s*=\s*res\s*;\s*$"
-          replacement = r"\1z_stream.next_in = const_cast<Bytef*>(reinterpret_cast<const Bytef*>(res));"
+          pattern = r"z_stream\.next_in\s*=\s*res\s*;"
+          replacement = "z_stream.next_in = const_cast<Bytef*>(reinterpret_cast<const Bytef*>(res));"
 
           ss2, count = re.subn(pattern, replacement, ss, count=1)
 
           if count != 1:
-              raise SystemExit("ERROR: z_stream.next_in = res assignment NOT FOUND")
+              print("===== STREAM SOURCE DEBUG =====")
+              for i, line in enumerate(ss.splitlines(), 1):
+                  if "next_in" in line or "res" in line:
+                      print(f"{i}: {line}")
+              raise SystemExit("ERROR: z_stream.next_in assignment NOT FOUND")
 
           stream.write_text(ss2)
 
           verify = stream.read_text()
 
-          if "z_stream.next_in = const_cast<Bytef*>(reinterpret_cast<const Bytef*>(res));" not in verify:
+          if replacement not in verify:
               raise SystemExit("ERROR: libziparchive stream patch FAILED")
 
           print("STREAM PATCH OK")
 
           print("===== STREAM PATCH VERIFY =====")
           for i, line in enumerate(verify.splitlines(), 1):
-              if "z_stream.next_in" in line:
+              if "next_in" in line:
                   print(f"{i}: {line}")
           PY2
 
