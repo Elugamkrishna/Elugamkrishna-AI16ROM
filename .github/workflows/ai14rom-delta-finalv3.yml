@@ -594,17 +594,17 @@ jobs:
 
           import re
 
-          pattern = r"z_stream\.next_in\s*=\s*res\s*;"
-          replacement = "z_stream.next_in = const_cast<Bytef*>(reinterpret_cast<const Bytef*>(res));"
+          pattern = r"z_stream_\.next_in\s*=\s*res\s*;"
+          replacement = "z_stream_.next_in = const_cast<Bytef*>(reinterpret_cast<const Bytef*>(res));"
 
           ss2, count = re.subn(pattern, replacement, ss, count=1)
 
           if count != 1:
               print("===== STREAM SOURCE DEBUG =====")
               for i, line in enumerate(ss.splitlines(), 1):
-                  if "next_in" in line or "res" in line:
+                  if "next_in" in line:
                       print(f"{i}: {line}")
-              raise SystemExit("ERROR: z_stream.next_in assignment NOT FOUND")
+              raise SystemExit("ERROR: z_stream_.next_in assignment NOT FOUND")
 
           stream.write_text(ss2)
 
