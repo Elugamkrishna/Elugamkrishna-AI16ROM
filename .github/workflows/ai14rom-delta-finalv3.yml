@@ -619,6 +619,44 @@ jobs:
           for i, line in enumerate(verify.splitlines(), 1):
               if "next_in" in line:
                   print(f"{i}: {line}")
+          # --------------------------------------------------------
+          # FIX: libchrome host zlib constness
+          # --------------------------------------------------------
+
+          TASK_RUNNER = Path("deps/libchrome/base/task_runner.cc")
+          tr = TASK_RUNNER.read_text()
+
+          import re
+
+          task_pattern = r"z_stream_->next_in\s*=\s*reinterpret_cast<const uint8_t\*>\(data\)\s*;"
+          task_replacement = "z_stream_->next_in = const_cast<Bytef*>(reinterpret_cast<const Bytef*>(data));"
+
+          tr2, task_count = re.subn(
+              task_pattern,
+              task_replacement,
+              tr,
+              count=1
+          )
+
+          if task_count != 1:
+              print("===== TASK_RUNNER SOURCE DEBUG =====")
+              for i, line in enumerate(tr.splitlines(), 1):
+                  if "next_in" in line:
+                      print(f"{i}: {line}")
+              raise SystemExit("ERROR: task_runner z_stream_->next_in assignment NOT FOUND")
+
+          TASK_RUNNER.write_text(tr2)
+
+          if task_replacement not in TASK_RUNNER.read_text():
+              raise SystemExit("ERROR: task_runner host zlib patch FAILED")
+
+          print("TASK_RUNNER PATCH OK")
+
+          print("===== TASK_RUNNER VERIFY =====")
+          for i, line in enumerate(TASK_RUNNER.read_text().splitlines(), 1):
+              if "next_in" in line:
+                  print(f"{i}: {line}")
+
           PY2
 
           echo
