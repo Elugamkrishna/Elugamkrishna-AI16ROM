@@ -375,6 +375,21 @@ target_sources(delta_generator PRIVATE ${AI14ROM_ZIPARCHIVE_SOURCES})
 add_compile_definitions(EVP_PKEY_size=EVP_PKEY_get_size EVP_PKEY_id=EVP_PKEY_get_id)
 
 set(AI14ROM_STAGE6_LINK_SOURCES
+  "${ROOT}/deps/libchrome/base/timer/timer.cc"
+  "${ROOT}/deps/libchrome/base/message_loop/message_loop.cc"
+  "${ROOT}/deps/libchrome/base/run_loop.cc"
+  "${ROOT}/deps/libchrome/base/threading/thread_task_runner_handle.cc"
+  "${ROOT}/deps/libchrome/base/threading/sequenced_task_runner_handle.cc"
+  "${ROOT}/deps/libchrome/base/synchronization/condition_variable_posix.cc"
+  "${ROOT}/deps/libchrome/base/feature_list.cc"
+  "${ROOT}/deps/libchrome/base/metrics/field_trial_params.cc"
+  "${ROOT}/deps/libchrome/base/build_time.cc"
+  "${ROOT}/deps/libchrome/base/memory/shared_memory.cc"
+  "${ROOT}/deps/libchrome/base/unguessable_token.cc"
+  "${ROOT}/deps/libchrome/base/at_exit.cc"
+  "${ROOT}/deps/libchrome/base/hash/md5.cc"
+  "${ROOT}/deps/libchrome/base/task/post_task_and_reply_impl.cc"
+  "${ROOT}/deps/libchrome/base/files/file_tracing.cc"
   "${ROOT}/deps/libchrome/base/task_runner.cc"
   "${ROOT}/deps/libchrome/base/process/process_posix.cc"
   "${ROOT}/deps/libchrome/base/sys_info_posix.cc"
@@ -484,11 +499,9 @@ target_sources(delta_generator PRIVATE ${AI14ROM_FEC_RS_SOURCES})
 
 # Protobuf + Abseil + generated utf8_range are mutually dependent
 # static archives, therefore link them as one archive group.
-target_link_options(delta_generator PRIVATE
-  "-Wl,--start-group"
-)
-
 target_link_libraries(delta_generator PRIVATE
+  "-Wl,--start-group"
+
   ${ROOT}/deps/gflags_install/lib/libgflags.a
 
   protobuf::libprotobuf
@@ -506,9 +519,10 @@ target_link_libraries(delta_generator PRIVATE
   ext2fs
 
   pthread
-)
 
-target_link_options(delta_generator PRIVATE
+  # Protobuf utf8_range static runtime.
+  ${ROOT}/deps/protobuf_install/lib/libutf8_range.a
+
   "-Wl,--end-group"
 )
 
