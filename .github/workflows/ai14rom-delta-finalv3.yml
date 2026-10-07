@@ -620,6 +620,45 @@ jobs:
               if "next_in" in line:
                   print(f"{i}: {line}")
           # --------------------------------------------------------
+          # --------------------------------------------------------
+          # FIX: libchrome value_iterators C++20 host completeness
+          # --------------------------------------------------------
+
+          VALUE_ITERATORS = Path("deps/libchrome/base/value_iterators.cc")
+          vi = VALUE_ITERATORS.read_text()
+
+          values_include = '#include "base/values.h"'
+
+          if values_include not in vi:
+              include_line = '#include "base/value_iterators.h"'
+
+              if include_line not in vi:
+                  raise SystemExit(
+                      "ERROR: value_iterators include anchor NOT FOUND"
+                  )
+
+              vi = vi.replace(
+                  include_line,
+                  include_line + "\n" + values_include,
+                  1
+              )
+
+              VALUE_ITERATORS.write_text(vi)
+
+          verify_vi = VALUE_ITERATORS.read_text()
+
+          if values_include not in verify_vi:
+              raise SystemExit(
+                  "ERROR: value_iterators values.h include patch FAILED"
+              )
+
+          print("VALUE_ITERATORS PATCH OK")
+
+          print("===== VALUE_ITERATORS VERIFY =====")
+          for i, line in enumerate(verify_vi.splitlines(), 1):
+              if "value_iterators.h" in line or "values.h" in line:
+                  print(f"{i}: {line}")
+
           # FIX: libziparchive zip_writer host zlib constness
           # --------------------------------------------------------
 
