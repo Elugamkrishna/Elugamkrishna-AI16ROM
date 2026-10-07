@@ -592,12 +592,24 @@ jobs:
           stream = Path("deps/libziparchive/zip_archive_stream_entry.cc")
           ss = stream.read_text()
 
-          ss = ss.replace(
-              "z_stream.next_in = res;",
-              "z_stream.next_in = const_cast<Bytef*>(reinterpret_cast<const Bytef*>(res));"
-          )
+          old_stream = "z_stream.next_in = res;"
+          new_stream = "z_stream.next_in = const_cast<Bytef*>(reinterpret_cast<const Bytef*>(res));"
 
+          if old_stream not in ss:
+              raise SystemExit("ERROR: target z_stream.next_in = res; NOT FOUND")
+
+          ss = ss.replace(old_stream, new_stream, 1)
           stream.write_text(ss)
+
+          if new_stream not in stream.read_text():
+              raise SystemExit("ERROR: libziparchive stream patch FAILED")
+
+          print("STREAM PATCH OK")
+
+          print("===== STREAM PATCH VERIFY =====")
+          for i, line in enumerate(stream.read_text().splitlines(), 1):
+              if "z_stream.next_in" in line:
+                  print(f"{i}: {line}")
           PY2
 
           echo
