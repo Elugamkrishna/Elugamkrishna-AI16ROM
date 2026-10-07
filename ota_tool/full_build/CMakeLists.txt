@@ -355,6 +355,7 @@ add_executable(delta_generator
 
 target_include_directories(delta_generator PRIVATE
   "${ROOT}/deps/modp_b64"
+  "${ROOT}/deps/modp_b64/modp_b64"
 )
 
 
