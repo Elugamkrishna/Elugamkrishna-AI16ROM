@@ -659,6 +659,64 @@ jobs:
               if "value_iterators.h" in line or "values.h" in line:
                   print(f"{i}: {line}")
 
+          # --------------------------------------------------------
+          # FIX: system_core libsnapshot CowWriter host <cstring>
+          # --------------------------------------------------------
+
+          COW_WRITER = Path("deps/system_core/fs_mgr/libsnapshot/libsnapshot_cow/cow_writer.cpp")
+          test_cow_writer = COW_WRITER
+
+          if not test_cow_writer.exists():
+              raise SystemExit(
+                  "ERROR: cow_writer.cpp NOT FOUND"
+              )
+
+          cow = test_cow_writer.read_text()
+
+          cstring_include = "#include <cstring>"
+
+          if cstring_include not in cow:
+              anchor = "#include <queue>"
+
+              if anchor not in cow:
+                  raise SystemExit(
+                      "ERROR: cow_writer include anchor NOT FOUND"
+                  )
+
+              cow = cow.replace(
+                  anchor,
+                  anchor + "\n" + cstring_include,
+                  1
+              )
+
+              test_cow_writer.write_text(cow)
+
+          verify_cow = test_cow_writer.read_text()
+
+          if cstring_include not in verify_cow:
+              raise SystemExit(
+                  "ERROR: cow_writer <cstring> patch FAILED"
+              )
+
+          print("COW_WRITER CSTRING PATCH OK")
+
+          print("===== COW_WRITER VERIFY =====")
+          for i, line in enumerate(verify_cow.splitlines(), 1):
+              if "#include <cstring>" in line:
+                  print(f"{i}: {line}")
+
+          if "memset(" not in verify_cow:
+              raise SystemExit(
+                  "ERROR: cow_writer memset() usage missing during audit"
+              )
+
+          if "std::memcpy(" not in verify_cow:
+              raise SystemExit(
+                  "ERROR: cow_writer std::memcpy() usage missing during audit"
+              )
+
+          print("COW_WRITER MEMORY API AUDIT OK")
+
           # FIX: libziparchive zip_writer host zlib constness
           # --------------------------------------------------------
 
