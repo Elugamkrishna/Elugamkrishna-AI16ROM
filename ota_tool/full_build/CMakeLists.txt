@@ -141,6 +141,7 @@ set(DELTA_SOURCES
   "${ROOT}/deps/libbase/posix_strerror_r.cpp"
 
   # libchrome required implementations
+  "${ROOT}/deps/libchrome/base/md5.cc"
   "${ROOT}/deps/libchrome/base/synchronization/lock_impl_posix.cc"
   "${ROOT}/deps/libchrome/base/location.cc"
   "${ROOT}/deps/libchrome/base/command_line.cc"
